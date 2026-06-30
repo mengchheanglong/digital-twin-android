@@ -7,8 +7,10 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
+import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
 
 interface TodayRepository {
     suspend fun getToday(): MobileToday
@@ -27,6 +29,7 @@ data class TodayHttpRequest(
     val method: String,
     val url: String,
     val headers: Map<String, String>,
+    val body: String? = null,
 )
 
 data class TodayHttpResponse(
@@ -44,8 +47,9 @@ class OkHttpTodayTransport(
     override fun execute(request: TodayHttpRequest): TodayHttpResponse {
         val builder = Request.Builder().url(request.url)
         request.headers.forEach { (name, value) -> builder.header(name, value) }
+        val requestBody = request.body?.toRequestBody(request.headers["Content-Type"]?.toMediaType())
 
-        client.newCall(builder.method(request.method, null).build()).execute().use { response ->
+        client.newCall(builder.method(request.method, requestBody).build()).execute().use { response ->
             return TodayHttpResponse(
                 statusCode = response.code,
                 body = response.body.string(),
@@ -114,6 +118,8 @@ class NetworkTodayRepository(
 data class TodaySettings(
     val baseUrl: String = "",
     val token: String = "",
+    val lastUserEmail: String = "",
+    val lastUserName: String = "",
 ) {
     fun hasCredentials(): Boolean = baseUrl.isNotBlank() && token.isNotBlank()
 }
@@ -143,12 +149,16 @@ class SharedPreferencesTodaySettingsStore(
     override fun load(): TodaySettings = TodaySettings(
         baseUrl = preferences.getString(KEY_BASE_URL, "").orEmpty(),
         token = preferences.getString(KEY_TOKEN, "").orEmpty(),
+        lastUserEmail = preferences.getString(KEY_LAST_USER_EMAIL, "").orEmpty(),
+        lastUserName = preferences.getString(KEY_LAST_USER_NAME, "").orEmpty(),
     )
 
     override fun save(settings: TodaySettings) {
         preferences.edit()
             .putString(KEY_BASE_URL, settings.baseUrl.trim())
             .putString(KEY_TOKEN, settings.token.trim())
+            .putString(KEY_LAST_USER_EMAIL, settings.lastUserEmail.trim())
+            .putString(KEY_LAST_USER_NAME, settings.lastUserName.trim())
             .apply()
     }
 
@@ -156,6 +166,8 @@ class SharedPreferencesTodaySettingsStore(
         const val PREFERENCES_NAME = "mobile_today_settings"
         const val KEY_BASE_URL = "backend_base_url"
         const val KEY_TOKEN = "jwt_token"
+        const val KEY_LAST_USER_EMAIL = "last_user_email"
+        const val KEY_LAST_USER_NAME = "last_user_name"
     }
 }
 

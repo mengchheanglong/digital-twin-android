@@ -16,4 +16,11 @@ class TodaySettingsStoreTest {
         assertEquals("https://api.example.test", loaded.baseUrl)
         assertEquals("test-token", loaded.token)
     }
+
+    @Test
+    fun settingsDoNotHavePasswordStorage() {
+        val fieldNames = TodaySettings::class.java.declaredFields.map { it.name }
+
+        assertEquals(false, fieldNames.any { it.contains("password", ignoreCase = true) })
+    }
 }

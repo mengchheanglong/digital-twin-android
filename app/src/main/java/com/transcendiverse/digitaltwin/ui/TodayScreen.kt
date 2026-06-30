@@ -33,7 +33,9 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.transcendiverse.digitaltwin.data.FakeTodayRepository
 import com.transcendiverse.digitaltwin.data.InMemoryTodaySettingsStore
+import com.transcendiverse.digitaltwin.data.LoginRepository
 import com.transcendiverse.digitaltwin.data.NetworkTodayRepository
+import com.transcendiverse.digitaltwin.data.NetworkLoginRepository
 import com.transcendiverse.digitaltwin.data.TodayRepository
 import com.transcendiverse.digitaltwin.data.TodaySettings
 import com.transcendiverse.digitaltwin.data.TodaySettingsStore
@@ -44,20 +46,22 @@ import kotlinx.coroutines.launch
 fun TodayScreen(
     settingsStore: TodaySettingsStore,
     fakeRepository: TodayRepository = FakeTodayRepository(),
+    loginRepository: LoginRepository = NetworkLoginRepository(),
     networkRepositoryFactory: (String, String) -> TodayRepository = { baseUrl, token ->
         NetworkTodayRepository(baseUrl = baseUrl, token = token)
     },
 ) {
     var savedSettings by remember { mutableStateOf(settingsStore.load()) }
     var baseUrl by remember { mutableStateOf(savedSettings.baseUrl) }
-    var token by remember { mutableStateOf(savedSettings.token) }
+    var email by remember { mutableStateOf(savedSettings.lastUserEmail) }
+    var password by remember { mutableStateOf("") }
     var today by remember { mutableStateOf<MobileToday?>(null) }
     var status by remember {
         mutableStateOf(if (savedSettings.hasCredentials()) "Loading" else "Fixture mode")
     }
     val scope = rememberCoroutineScope()
 
-    suspend fun loadToday(settings: TodaySettings) {
+    suspend fun loadToday(settings: TodaySettings, loadedStatus: String? = null) {
         status = "Loading"
         val repository = if (settings.hasCredentials()) {
             networkRepositoryFactory(settings.baseUrl, settings.token)
@@ -67,7 +71,7 @@ fun TodayScreen(
 
         try {
             today = repository.getToday()
-            status = if (settings.hasCredentials()) "Loaded" else "Fixture mode"
+            status = loadedStatus ?: if (settings.hasCredentials()) "Loaded" else "Fixture mode"
         } catch (error: Exception) {
             today = null
             status = "Error: ${error.message ?: "Unable to load Today"}"
@@ -99,20 +103,61 @@ fun TodayScreen(
                 } ?: LoadingState(status)
                 SettingsPanel(
                     baseUrl = baseUrl,
-                    token = token,
+                    email = email,
+                    password = password,
+                    signedIn = savedSettings.token.isNotBlank(),
                     status = status,
                     onBaseUrlChange = { baseUrl = it },
-                    onTokenChange = { token = it },
-                    onSave = {
-                        val settings = TodaySettings(baseUrl = baseUrl, token = token)
+                    onEmailChange = { email = it },
+                    onPasswordChange = { password = it },
+                    onSaveUrl = {
+                        val settings = savedSettings.copy(baseUrl = baseUrl.trim())
                         settingsStore.save(settings)
                         savedSettings = settings
-                        status = "Saved"
+                        baseUrl = settings.baseUrl
+                        status = "URL saved"
+                    },
+                    onLogin = {
+                        val validationError = validateLoginInput(baseUrl, email, password)
+                        if (validationError != null) {
+                            status = "Login failed: $validationError"
+                            return@SettingsPanel
+                        }
+
+                        scope.launch {
+                            status = "Logging in"
+                            try {
+                                val response = loginRepository.login(
+                                    baseUrl = baseUrl.trim(),
+                                    email = email.trim(),
+                                    password = password,
+                                )
+                                password = ""
+                                val settings = TodaySettings(
+                                    baseUrl = baseUrl.trim(),
+                                    token = response.token,
+                                    lastUserEmail = response.user.email,
+                                    lastUserName = response.user.name,
+                                )
+                                settingsStore.save(settings)
+                                savedSettings = settings
+                                email = settings.lastUserEmail
+                                loadToday(settings, loadedStatus = "Login successful")
+                            } catch (error: Exception) {
+                                status = "Login failed: ${error.message ?: "Unable to sign in"}"
+                            }
+                        }
                     },
                     onRefresh = {
-                        val settings = TodaySettings(baseUrl = baseUrl, token = token)
+                        val settings = savedSettings.copy(baseUrl = baseUrl.trim())
                         savedSettings = settings
                         scope.launch { loadToday(settings) }
+                    },
+                    onClearToken = {
+                        val settings = savedSettings.copy(token = "", lastUserName = "")
+                        settingsStore.save(settings)
+                        savedSettings = settings
+                        status = if (settings.baseUrl.isBlank()) "Fixture mode" else "Token cleared"
                     },
                 )
             }
@@ -259,19 +304,31 @@ private fun LauncherActions(today: MobileToday) {
 @Composable
 private fun SettingsPanel(
     baseUrl: String,
-    token: String,
+    email: String,
+    password: String,
+    signedIn: Boolean,
     status: String,
     onBaseUrlChange: (String) -> Unit,
-    onTokenChange: (String) -> Unit,
-    onSave: () -> Unit,
+    onEmailChange: (String) -> Unit,
+    onPasswordChange: (String) -> Unit,
+    onSaveUrl: () -> Unit,
+    onLogin: () -> Unit,
     onRefresh: () -> Unit,
+    onClearToken: () -> Unit,
 ) {
-    InfoCard(title = "Settings") {
+    InfoCard(title = "Login") {
         Text(
             text = "Status: $status",
             style = MaterialTheme.typography.bodyMedium,
             color = Color(0xFF475569),
         )
+        if (signedIn) {
+            Text(
+                text = "Signed in",
+                style = MaterialTheme.typography.bodySmall,
+                color = Color(0xFF0F766E),
+            )
+        }
         Spacer(modifier = Modifier.height(6.dp))
         OutlinedTextField(
             value = baseUrl,
@@ -282,10 +339,18 @@ private fun SettingsPanel(
         )
         Spacer(modifier = Modifier.height(10.dp))
         OutlinedTextField(
-            value = token,
-            onValueChange = onTokenChange,
+            value = email,
+            onValueChange = onEmailChange,
             modifier = Modifier.fillMaxWidth(),
-            label = { Text("JWT token") },
+            label = { Text("Email") },
+            singleLine = true,
+        )
+        Spacer(modifier = Modifier.height(10.dp))
+        OutlinedTextField(
+            value = password,
+            onValueChange = onPasswordChange,
+            modifier = Modifier.fillMaxWidth(),
+            label = { Text("Password") },
             visualTransformation = PasswordVisualTransformation(),
             singleLine = true,
         )
@@ -294,14 +359,33 @@ private fun SettingsPanel(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Button(onClick = onSave, modifier = Modifier.weight(1f)) {
-                Text("Save")
+            Button(onClick = onSaveUrl, modifier = Modifier.weight(1f)) {
+                Text("Save URL")
             }
-            Button(onClick = onRefresh, modifier = Modifier.weight(1f)) {
+            Button(onClick = onLogin, modifier = Modifier.weight(1f)) {
+                Text("Login")
+            }
+        }
+        Spacer(modifier = Modifier.height(8.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Button(onClick = onRefresh, modifier = Modifier.weight(1f), enabled = signedIn) {
                 Text("Refresh")
+            }
+            Button(onClick = onClearToken, modifier = Modifier.weight(1f), enabled = signedIn) {
+                Text("Clear token")
             }
         }
     }
+}
+
+fun validateLoginInput(baseUrl: String, email: String, password: String): String? = when {
+    baseUrl.isBlank() -> "Backend base URL is required"
+    email.isBlank() -> "Email is required"
+    password.isBlank() -> "Password is required"
+    else -> null
 }
 
 @Composable
