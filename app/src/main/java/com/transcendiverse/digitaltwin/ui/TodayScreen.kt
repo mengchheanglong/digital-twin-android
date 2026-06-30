@@ -1,5 +1,6 @@
 package com.transcendiverse.digitaltwin.ui
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -12,12 +13,14 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.Surface
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -26,6 +29,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -52,8 +56,11 @@ import com.transcendiverse.digitaltwin.data.resolveActiveQuest
 import com.transcendiverse.digitaltwin.data.useProductionBackend
 import com.transcendiverse.digitaltwin.data.validateDailyCheckInRatings
 import com.transcendiverse.digitaltwin.model.MobileToday
+import com.transcendiverse.digitaltwin.model.recommendedTodayAction
 import java.text.DateFormat
+import java.text.SimpleDateFormat
 import java.util.Date
+import java.util.Locale
 import kotlinx.coroutines.launch
 
 @Composable
@@ -167,18 +174,21 @@ fun TodayScreen(
     MaterialTheme {
         Surface(
             modifier = Modifier.fillMaxSize(),
-            color = Color(0xFFF8FAFC),
+            color = CompanionBackground,
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .verticalScroll(rememberScrollState())
-                    .padding(20.dp),
-                verticalArrangement = Arrangement.spacedBy(14.dp),
+                    .padding(horizontal = 22.dp, vertical = 24.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
                 today?.let { loadedToday ->
-                    Header(loadedToday)
-                    StatusCards(loadedToday)
+                    DailyHero(loadedToday)
+                    PrimaryActionCard(
+                        today = loadedToday,
+                        signedIn = savedSettings.hasCredentials(),
+                    )
                     if (savedSettings.hasCredentials()) {
                         QuickCheckInCard(
                             today = loadedToday,
@@ -239,7 +249,7 @@ fun TodayScreen(
                     InsightCard(loadedToday)
                     LauncherActions(loadedToday)
                 } ?: LoadingState(status)
-                SettingsPanel(
+                ConnectionPanel(
                     baseUrl = baseUrl,
                     email = email,
                     password = password,
@@ -259,32 +269,31 @@ fun TodayScreen(
                         val validationError = validateLoginInput(baseUrl, email, password)
                         if (validationError != null) {
                             status = "Login failed: $validationError"
-                            return@SettingsPanel
-                        }
-
-                        scope.launch {
-                            status = "Logging in"
-                            try {
-                                val response = loginRepository.login(
-                                    baseUrl = baseUrl.trim(),
-                                    email = email.trim(),
-                                    password = password,
-                                )
-                                password = ""
-                                val settings = TodaySettings(
-                                    baseUrl = baseUrl.trim(),
-                                    token = response.token,
-                                    lastUserEmail = response.user.email,
-                                    lastUserName = response.user.name,
-                                )
-                                settingsStore.save(settings)
-                                savedSettings = settings
-                                email = settings.lastUserEmail
-                                onScheduleBackgroundSync()
-                                onEnqueueBackgroundSync()
-                                loadToday(settings, loadedStatus = "Signed in")
-                            } catch (error: Exception) {
-                                status = "Login failed: ${safeStatusErrorMessage(error, "Unable to sign in")}"
+                        } else {
+                            scope.launch {
+                                status = "Logging in"
+                                try {
+                                    val response = loginRepository.login(
+                                        baseUrl = baseUrl.trim(),
+                                        email = email.trim(),
+                                        password = password,
+                                    )
+                                    password = ""
+                                    val settings = TodaySettings(
+                                        baseUrl = baseUrl.trim(),
+                                        token = response.token,
+                                        lastUserEmail = response.user.email,
+                                        lastUserName = response.user.name,
+                                    )
+                                    settingsStore.save(settings)
+                                    savedSettings = settings
+                                    email = settings.lastUserEmail
+                                    onScheduleBackgroundSync()
+                                    onEnqueueBackgroundSync()
+                                    loadToday(settings, loadedStatus = "Signed in")
+                                } catch (error: Exception) {
+                                    status = "Login failed: ${safeStatusErrorMessage(error, "Unable to sign in")}"
+                                }
                             }
                         }
                     },
@@ -319,57 +328,121 @@ fun TodayScreen(
 }
 
 @Composable
-private fun Header(today: MobileToday) {
+private fun DailyHero(today: MobileToday) {
     val mood = today.user.mood
 
-    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(
             text = "Digital Twin",
             style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.Bold,
+            color = CompanionInk,
+            fontWeight = FontWeight.SemiBold,
         )
         Text(
-            text = "${mood.emoji} ${today.user.name} is ${mood.label}",
-            style = MaterialTheme.typography.titleMedium,
-            color = Color(0xFF334155),
-        )
-        Text(
-            text = "Level ${today.user.level} - ${today.user.currentXP}/${today.user.requiredXP} XP",
+            text = formatTodayDay(today.dayKey),
             style = MaterialTheme.typography.bodyMedium,
-            color = Color(0xFF475569),
+            color = CompanionMuted,
+        )
+        Spacer(modifier = Modifier.height(2.dp))
+        Text(
+            text = "${today.user.name} is ${mood.label}",
+            style = MaterialTheme.typography.headlineSmall,
+            color = CompanionInk,
+            fontWeight = FontWeight.SemiBold,
+        )
+        Text(
+            text = "Level ${today.user.level} - ${today.user.currentXP} / ${today.user.requiredXP} XP - ${today.user.streak}-day streak",
+            style = MaterialTheme.typography.bodyMedium,
+            color = CompanionSecondary,
+        )
+        TodayVitalsRow(today)
+    }
+}
+
+@Composable
+private fun TodayVitalsRow(today: MobileToday) {
+    val dimensions = today.checkIn.dimensions ?: return
+
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        SoftChip(
+            label = "Energy ${dimensions.energy}",
+            modifier = Modifier.weight(1f),
+        )
+        SoftChip(
+            label = "Focus ${dimensions.focus}",
+            modifier = Modifier.weight(1f),
+        )
+        SoftChip(
+            label = "Stress ${dimensions.stressControl}",
+            modifier = Modifier.weight(1f),
         )
     }
 }
 
 @Composable
-private fun StatusCards(today: MobileToday) {
-    val dimensions = today.checkIn.dimensions
-
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
+private fun SoftChip(label: String, modifier: Modifier = Modifier) {
+    Surface(
+        modifier = modifier,
+        color = CompanionChip,
+        shape = RoundedCornerShape(999.dp),
+        border = BorderStroke(1.dp, CompanionBorder),
     ) {
-        MetricCard(
-            label = "Streak",
-            value = "${today.user.streak} days",
-            modifier = Modifier.weight(1f),
-        )
-        MetricCard(
-            label = "Check-in",
-            value = if (today.checkIn.completedToday) {
-                "Done ${today.checkIn.score ?: 0}"
-            } else {
-                "Open ${today.checkIn.score ?: 0}"
-            },
-            modifier = Modifier.weight(1f),
+        Text(
+            text = label,
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+            style = MaterialTheme.typography.labelMedium,
+            color = CompanionSecondary,
+            fontWeight = FontWeight.Medium,
         )
     }
-    if (dimensions != null) {
-        Text(
-            text = "Energy ${dimensions.energy} - Focus ${dimensions.focus} - Stress control ${dimensions.stressControl}",
-            style = MaterialTheme.typography.bodySmall,
-            color = Color(0xFF64748B),
-        )
+}
+
+@Composable
+private fun PrimaryActionCard(
+    today: MobileToday,
+    signedIn: Boolean,
+) {
+    val action = recommendedTodayAction(today)
+    val detail = when (action.label) {
+        "Check in" -> if (signedIn) {
+            "Start with a quick read on energy, focus, and stress."
+        } else {
+            "Sign in from Connection settings to save today's check-in."
+        }
+        "Continue quest" -> today.quest.current?.goal ?: "Pick up where you left off."
+        else -> "Use the reflection below to close the loop for today."
+    }
+
+    Card(
+        colors = CardDefaults.cardColors(containerColor = CompanionPrimary),
+        shape = RoundedCornerShape(18.dp),
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(18.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text(
+                text = "Now",
+                style = MaterialTheme.typography.labelLarge,
+                color = Color.White.copy(alpha = 0.78f),
+            )
+            Text(
+                text = action.label,
+                style = MaterialTheme.typography.headlineSmall,
+                color = Color.White,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Text(
+                text = detail,
+                style = MaterialTheme.typography.bodyMedium,
+                color = Color.White.copy(alpha = 0.88f),
+            )
+        }
     }
 }
 
@@ -399,10 +472,12 @@ private fun QuickCheckInCard(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             CheckInPreset.entries.forEach { preset ->
-                Button(
+                OutlinedButton(
                     onClick = { ratings = checkInPresetRatings(preset) },
                     modifier = Modifier.weight(1f),
                     enabled = !submitting,
+                    border = BorderStroke(1.dp, CompanionBorder),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = CompanionInk),
                 ) {
                     Text(preset.label)
                 }
@@ -423,6 +498,7 @@ private fun QuickCheckInCard(
             onClick = { onSubmit(ratings) },
             modifier = Modifier.fillMaxWidth(),
             enabled = !submitting,
+            colors = ButtonDefaults.buttonColors(containerColor = CompanionPrimary, contentColor = Color.White),
         ) {
             Text(if (submitting) "Submitting" else "Submit check-in")
         }
@@ -447,7 +523,11 @@ private fun RatingRow(
             style = MaterialTheme.typography.bodyMedium,
             color = Color(0xFF334155),
         )
-        TextButton(onClick = onDecrease, enabled = enabled && rating > 1) {
+        TextButton(
+            onClick = onDecrease,
+            enabled = enabled && rating > 1,
+            colors = ButtonDefaults.textButtonColors(contentColor = CompanionPrimary),
+        ) {
             Text("-")
         }
         Text(
@@ -455,25 +535,16 @@ private fun RatingRow(
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.SemiBold,
         )
-        TextButton(onClick = onIncrease, enabled = enabled && rating < 5) {
+        TextButton(
+            onClick = onIncrease,
+            enabled = enabled && rating < 5,
+            colors = ButtonDefaults.textButtonColors(contentColor = CompanionPrimary),
+        ) {
             Text("+")
         }
     }
 }
 
-@Composable
-private fun MetricCard(label: String, value: String, modifier: Modifier = Modifier) {
-    Card(
-        modifier = modifier,
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        shape = RoundedCornerShape(8.dp),
-    ) {
-        Column(modifier = Modifier.padding(14.dp)) {
-            Text(text = label, style = MaterialTheme.typography.labelMedium, color = Color(0xFF64748B))
-            Text(text = value, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-        }
-    }
-}
 
 @Composable
 private fun QuestCard(
@@ -507,17 +578,21 @@ private fun QuestCard(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                Button(
+                OutlinedButton(
                     onClick = onDecreaseProgress,
                     modifier = Modifier.weight(1f),
                     enabled = !submitting && activeQuest.progress > 0,
+                    border = BorderStroke(1.dp, CompanionBorder),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = CompanionInk),
                 ) {
                     Text("-10%")
                 }
-                Button(
+                OutlinedButton(
                     onClick = onIncreaseProgress,
                     modifier = Modifier.weight(1f),
                     enabled = !submitting && activeQuest.progress < 100,
+                    border = BorderStroke(1.dp, CompanionBorder),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = CompanionInk),
                 ) {
                     Text("+10%")
                 }
@@ -525,6 +600,7 @@ private fun QuestCard(
                     onClick = onToggleComplete,
                     modifier = Modifier.weight(1f),
                     enabled = !submitting,
+                    colors = ButtonDefaults.buttonColors(containerColor = CompanionPrimary, contentColor = Color.White),
                 ) {
                     Text(if (activeQuest.completed) "Reopen" else "Complete")
                 }
@@ -541,11 +617,6 @@ private fun QuestCard(
             text = today.quest.nextAction.reason,
             style = MaterialTheme.typography.bodyMedium,
             color = Color(0xFF475569),
-        )
-        Text(
-            text = today.quest.nextAction.href,
-            style = MaterialTheme.typography.bodySmall,
-            color = Color(0xFF64748B),
         )
     }
 }
@@ -569,17 +640,26 @@ private fun LauncherActions(today: MobileToday) {
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Button(onClick = {}, modifier = Modifier.weight(1f)) {
+        OutlinedButton(
+            onClick = {},
+            modifier = Modifier.weight(1f),
+            border = BorderStroke(1.dp, CompanionBorder),
+            colors = ButtonDefaults.outlinedButtonColors(contentColor = CompanionInk),
+        ) {
             Text(today.launcher.primaryLabel)
         }
-        Button(onClick = {}, modifier = Modifier.weight(1f)) {
+        TextButton(
+            onClick = {},
+            modifier = Modifier.weight(1f),
+            colors = ButtonDefaults.textButtonColors(contentColor = CompanionSecondary),
+        ) {
             Text(today.launcher.secondaryLabel)
         }
     }
 }
 
 @Composable
-private fun SettingsPanel(
+private fun ConnectionPanel(
     baseUrl: String,
     email: String,
     password: String,
@@ -594,24 +674,41 @@ private fun SettingsPanel(
     onUseProduction: () -> Unit,
     onClearToken: () -> Unit,
 ) {
-    InfoCard(title = "Settings") {
-        Text(
-            text = "Status: $status",
-            style = MaterialTheme.typography.bodyMedium,
-            color = Color(0xFF475569),
-        )
-        Text(
-            text = if (signedIn) "Signed in" else "Signed out - fixture mode",
-            style = MaterialTheme.typography.bodySmall,
-            color = if (signedIn) Color(0xFF0F766E) else Color(0xFF64748B),
-        )
-        Spacer(modifier = Modifier.height(6.dp))
-        Text(
-            text = "Backend: ${baseUrl.ifBlank { PRODUCTION_BACKEND_BASE_URL }}",
-            style = MaterialTheme.typography.bodySmall,
-            color = Color(0xFF334155),
-        )
-        Spacer(modifier = Modifier.height(6.dp))
+    var expanded by remember { mutableStateOf(false) }
+
+    InfoCard(title = "Connection") {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(2.dp),
+            ) {
+                Text(
+                    text = if (signedIn) "Signed in" else "Fixture mode",
+                    style = MaterialTheme.typography.titleSmall,
+                    color = if (signedIn) CompanionSuccess else CompanionSecondary,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                Text(
+                    text = status,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = CompanionMuted,
+                )
+            }
+            TextButton(
+                onClick = { expanded = !expanded },
+                colors = ButtonDefaults.textButtonColors(contentColor = CompanionPrimary),
+            ) {
+                Text(if (expanded) "Hide" else "Connection settings")
+            }
+        }
+
+        if (!expanded) return@InfoCard
+
+        Spacer(modifier = Modifier.height(8.dp))
         OutlinedTextField(
             value = baseUrl,
             onValueChange = onBaseUrlChange,
@@ -641,13 +738,20 @@ private fun SettingsPanel(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Button(onClick = onSaveUrl, modifier = Modifier.weight(1f)) {
+            OutlinedButton(
+                onClick = onSaveUrl,
+                modifier = Modifier.weight(1f),
+                border = BorderStroke(1.dp, CompanionBorder),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = CompanionInk),
+            ) {
                 Text("Save URL")
             }
-            Button(
+            OutlinedButton(
                 onClick = onUseProduction,
                 modifier = Modifier.weight(1f),
                 enabled = baseUrl.trim() != PRODUCTION_BACKEND_BASE_URL,
+                border = BorderStroke(1.dp, CompanionBorder),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = CompanionInk),
             ) {
                 Text("Use production")
             }
@@ -657,15 +761,30 @@ private fun SettingsPanel(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Button(onClick = onLogin, modifier = Modifier.weight(1f)) {
+            Button(
+                onClick = onLogin,
+                modifier = Modifier.weight(1f),
+                colors = ButtonDefaults.buttonColors(containerColor = CompanionPrimary, contentColor = Color.White),
+            ) {
                 Text("Login")
             }
-            Button(onClick = onRefresh, modifier = Modifier.weight(1f), enabled = signedIn) {
+            OutlinedButton(
+                onClick = onRefresh,
+                modifier = Modifier.weight(1f),
+                enabled = signedIn,
+                border = BorderStroke(1.dp, CompanionBorder),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = CompanionInk),
+            ) {
                 Text("Refresh")
             }
         }
         Spacer(modifier = Modifier.height(8.dp))
-        Button(onClick = onClearToken, modifier = Modifier.fillMaxWidth(), enabled = signedIn) {
+        TextButton(
+            onClick = onClearToken,
+            modifier = Modifier.fillMaxWidth(),
+            enabled = signedIn,
+            colors = ButtonDefaults.textButtonColors(contentColor = CompanionSecondary),
+        ) {
             Text("Clear login")
         }
     }
@@ -676,6 +795,23 @@ fun validateLoginInput(baseUrl: String, email: String, password: String): String
     email.isBlank() -> "Email is required"
     password.isBlank() -> "Password is required"
     else -> null
+}
+
+private val CompanionBackground = Color(0xFFFAF9F6)
+private val CompanionSurface = Color(0xFFFFFFFF)
+private val CompanionChip = Color(0xFFF1EEE8)
+private val CompanionPrimary = Color(0xFF31302E)
+private val CompanionInk = Color(0xFF1F1E1B)
+private val CompanionSecondary = Color(0xFF625F58)
+private val CompanionMuted = Color(0xFF8A857B)
+private val CompanionBorder = Color(0x1A000000)
+private val CompanionSuccess = Color(0xFF2A7C62)
+
+private fun formatTodayDay(dayKey: String): String {
+    val parsed = runCatching {
+        SimpleDateFormat("yyyy-MM-dd", Locale.US).parse(dayKey)
+    }.getOrNull()
+    return parsed?.let { SimpleDateFormat("EEEE, MMM d", Locale.US).format(it) } ?: dayKey
 }
 
 enum class CheckInPreset(val label: String) {
@@ -732,7 +868,7 @@ private fun LoadingState(status: String) {
         Text(
             text = status,
             style = MaterialTheme.typography.bodyLarge,
-            color = Color(0xFF475569),
+            color = CompanionSecondary,
         )
     }
 }
@@ -740,16 +876,17 @@ private fun LoadingState(status: String) {
 @Composable
 private fun InfoCard(title: String, content: @Composable () -> Unit) {
     Card(
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        shape = RoundedCornerShape(8.dp),
+        colors = CardDefaults.cardColors(containerColor = CompanionSurface),
+        shape = RoundedCornerShape(18.dp),
+        border = BorderStroke(1.dp, CompanionBorder),
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
+                .padding(18.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
-            Text(text = title, style = MaterialTheme.typography.labelLarge, color = Color(0xFF64748B))
+            Text(text = title, style = MaterialTheme.typography.labelLarge, color = CompanionMuted)
             content()
         }
     }
