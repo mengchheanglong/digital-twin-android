@@ -17,15 +17,22 @@ class MobileTodayModelTest {
 
     @Test
     fun fixtureDeserializesAndSerializes() {
-        val today = json.decodeFromString<MobileTodayResponse>(TodayFixture.json)
+        val response = json.decodeFromString<MobileTodayResponse>(TodayFixture.json)
+        val today = response.today
 
+        assertTrue(response.success)
         assertEquals("mobile-today.v0", today.version)
         assertEquals("Alex", today.user.name)
-        assertEquals("focused", today.user.mood)
+        assertEquals("focused", today.user.mood.label)
+        assertEquals(8, today.checkIn.dimensions?.focus)
+        assertEquals("Ship the smallest useful companion", today.quest.current?.goal)
+        assertEquals("daily", today.quest.current?.duration)
         assertEquals("Check in", today.quest.nextAction.label)
+        assertEquals("/dashboard/checkin", today.quest.nextAction.href)
         assertEquals("Open check-in", today.launcher.primaryLabel)
 
-        val encoded = json.encodeToString(today)
+        val encoded = json.encodeToString(response)
+        assertTrue(encoded.contains("\"success\":true"))
         assertTrue(encoded.contains("\"version\":\"mobile-today.v0\""))
         assertTrue(encoded.contains("\"primaryHref\":\"/dashboard/checkin\""))
     }
@@ -37,6 +44,7 @@ class MobileTodayModelTest {
             "journal",
             "chatMessages",
             "password",
+            "literal token value",
             "token",
             "deepseek",
             "mongodb",

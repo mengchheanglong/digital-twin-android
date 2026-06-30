@@ -2,10 +2,14 @@ package com.transcendiverse.digitaltwin.model
 
 import kotlinx.serialization.Serializable
 
-typealias MobileToday = MobileTodayResponse
-
 @Serializable
 data class MobileTodayResponse(
+    val success: Boolean,
+    val today: MobileToday,
+)
+
+@Serializable
+data class MobileToday(
     val version: String,
     val generatedAt: String,
     val dayKey: String,
@@ -23,14 +27,29 @@ data class MobileUser(
     val currentXP: Int,
     val requiredXP: Int,
     val streak: Int,
-    val mood: String,
+    val mood: MobileMood,
+)
+
+@Serializable
+data class MobileMood(
+    val emoji: String,
+    val label: String,
 )
 
 @Serializable
 data class MobileCheckIn(
     val completedToday: Boolean,
     val score: Int? = null,
-    val dimensions: Map<String, Int> = emptyMap(),
+    val dimensions: MobileDimensions? = null,
+)
+
+@Serializable
+data class MobileDimensions(
+    val energy: Int,
+    val focus: Int,
+    val stressControl: Int,
+    val socialConnection: Int,
+    val optimism: Int,
 )
 
 @Serializable
@@ -41,14 +60,15 @@ data class MobileQuestSection(
 
 @Serializable
 data class MobileQuest(
-    val title: String,
+    val goal: String,
+    val duration: String,
     val progress: Int,
-    val target: Int,
 )
 
 @Serializable
 data class MobileNextAction(
     val label: String,
+    val href: String,
     val reason: String,
 )
 

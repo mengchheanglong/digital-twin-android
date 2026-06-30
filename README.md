@@ -9,7 +9,7 @@ GET /api/mobile/today
 Authorization: Bearer <token>
 ```
 
-The current app uses a fake fixture repository instead of making network calls. That keeps this v0 build local, testable, and free of hardcoded secrets while preserving the typed `MobileToday` contract that the real backend client can consume later.
+The app can run in fixture mode or call the real backend when a backend base URL and JWT/token are saved in Settings. It does not include or hardcode any real token.
 
 ## Included
 
@@ -17,10 +17,35 @@ The current app uses a fake fixture repository instead of making network calls. 
 - Package `com.transcendiverse.digitaltwin`
 - App name `Digital Twin`
 - Serializable `MobileToday` domain models
-- Fixture-backed Today repository
+- Fixture-backed Today repository and OkHttp-backed network repository
 - Today screen with mood, streak, check-in status, quest status, next action, reflection, and launcher action labels
-- Settings placeholders for backend base URL and JWT/token input
-- Unit tests for serialization, action priority, and privacy guardrails
+- Settings panel for backend base URL and JWT/token input, with Save and Refresh actions
+- Unit tests for serialization, action priority, privacy guardrails, HTTP request/response behavior, and settings storage
+
+## Mobile Today client
+
+The Android contract matches the backend response envelope:
+
+```json
+{
+  "success": true,
+  "today": {
+    "version": "mobile-today.v0"
+  }
+}
+```
+
+When both Settings values are present, Refresh calls:
+
+```http
+GET /api/mobile/today
+Authorization: Bearer <token>
+Accept: application/json
+```
+
+When either value is missing, the Today screen renders the local fixture and shows fixture mode. HTTP failures and invalid JSON are shown as simple error status text instead of crashing the app.
+
+Settings are stored in app-private `SharedPreferences` for this v1 slice. Before a real release, token storage should move to encrypted storage such as AndroidX Security encrypted preferences or an equivalent platform-backed credential store.
 
 ## Launcher and widget status
 

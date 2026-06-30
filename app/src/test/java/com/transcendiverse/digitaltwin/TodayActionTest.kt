@@ -11,7 +11,7 @@ import org.junit.Test
 
 class TodayActionTest {
     private val json = Json { ignoreUnknownKeys = true }
-    private val baseToday = json.decodeFromString<MobileTodayResponse>(TodayFixture.json)
+    private val baseToday = json.decodeFromString<MobileTodayResponse>(TodayFixture.json).today
 
     @Test
     fun checkInHasPriorityWhenNotCompleted() {

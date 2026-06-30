@@ -19,9 +19,11 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -30,12 +32,51 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.transcendiverse.digitaltwin.data.FakeTodayRepository
+import com.transcendiverse.digitaltwin.data.InMemoryTodaySettingsStore
+import com.transcendiverse.digitaltwin.data.NetworkTodayRepository
 import com.transcendiverse.digitaltwin.data.TodayRepository
+import com.transcendiverse.digitaltwin.data.TodaySettings
+import com.transcendiverse.digitaltwin.data.TodaySettingsStore
 import com.transcendiverse.digitaltwin.model.MobileToday
+import kotlinx.coroutines.launch
 
 @Composable
-fun TodayScreen(repository: TodayRepository) {
-    val today = remember { repository.getToday() }
+fun TodayScreen(
+    settingsStore: TodaySettingsStore,
+    fakeRepository: TodayRepository = FakeTodayRepository(),
+    networkRepositoryFactory: (String, String) -> TodayRepository = { baseUrl, token ->
+        NetworkTodayRepository(baseUrl = baseUrl, token = token)
+    },
+) {
+    var savedSettings by remember { mutableStateOf(settingsStore.load()) }
+    var baseUrl by remember { mutableStateOf(savedSettings.baseUrl) }
+    var token by remember { mutableStateOf(savedSettings.token) }
+    var today by remember { mutableStateOf<MobileToday?>(null) }
+    var status by remember {
+        mutableStateOf(if (savedSettings.hasCredentials()) "Loading" else "Fixture mode")
+    }
+    val scope = rememberCoroutineScope()
+
+    suspend fun loadToday(settings: TodaySettings) {
+        status = "Loading"
+        val repository = if (settings.hasCredentials()) {
+            networkRepositoryFactory(settings.baseUrl, settings.token)
+        } else {
+            fakeRepository
+        }
+
+        try {
+            today = repository.getToday()
+            status = if (settings.hasCredentials()) "Loaded" else "Fixture mode"
+        } catch (error: Exception) {
+            today = null
+            status = "Error: ${error.message ?: "Unable to load Today"}"
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        loadToday(savedSettings)
+    }
 
     MaterialTheme {
         Surface(
@@ -49,12 +90,31 @@ fun TodayScreen(repository: TodayRepository) {
                     .padding(20.dp),
                 verticalArrangement = Arrangement.spacedBy(14.dp),
             ) {
-                Header(today)
-                StatusCards(today)
-                QuestCard(today)
-                InsightCard(today)
-                LauncherActions(today)
-                SettingsPanel()
+                today?.let { loadedToday ->
+                    Header(loadedToday)
+                    StatusCards(loadedToday)
+                    QuestCard(loadedToday)
+                    InsightCard(loadedToday)
+                    LauncherActions(loadedToday)
+                } ?: LoadingState(status)
+                SettingsPanel(
+                    baseUrl = baseUrl,
+                    token = token,
+                    status = status,
+                    onBaseUrlChange = { baseUrl = it },
+                    onTokenChange = { token = it },
+                    onSave = {
+                        val settings = TodaySettings(baseUrl = baseUrl, token = token)
+                        settingsStore.save(settings)
+                        savedSettings = settings
+                        status = "Saved"
+                    },
+                    onRefresh = {
+                        val settings = TodaySettings(baseUrl = baseUrl, token = token)
+                        savedSettings = settings
+                        scope.launch { loadToday(settings) }
+                    },
+                )
             }
         }
     }
@@ -62,7 +122,7 @@ fun TodayScreen(repository: TodayRepository) {
 
 @Composable
 private fun Header(today: MobileToday) {
-    val (emoji, label) = moodDisplay(today.user.mood)
+    val mood = today.user.mood
 
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Text(
@@ -71,7 +131,7 @@ private fun Header(today: MobileToday) {
             fontWeight = FontWeight.Bold,
         )
         Text(
-            text = "$emoji ${today.user.name} is $label",
+            text = "${mood.emoji} ${today.user.name} is ${mood.label}",
             style = MaterialTheme.typography.titleMedium,
             color = Color(0xFF334155),
         )
@@ -85,6 +145,8 @@ private fun Header(today: MobileToday) {
 
 @Composable
 private fun StatusCards(today: MobileToday) {
+    val dimensions = today.checkIn.dimensions
+
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -102,6 +164,13 @@ private fun StatusCards(today: MobileToday) {
                 "Open ${today.checkIn.score ?: 0}"
             },
             modifier = Modifier.weight(1f),
+        )
+    }
+    if (dimensions != null) {
+        Text(
+            text = "Energy ${dimensions.energy} - Focus ${dimensions.focus} - Stress control ${dimensions.stressControl}",
+            style = MaterialTheme.typography.bodySmall,
+            color = Color(0xFF64748B),
         )
     }
 }
@@ -125,7 +194,7 @@ private fun QuestCard(today: MobileToday) {
     val quest = today.quest.current
     InfoCard(title = "Quest") {
         Text(
-            text = quest?.title ?: "No active quest",
+            text = quest?.goal ?: "No active quest",
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.SemiBold,
         )
@@ -134,7 +203,7 @@ private fun QuestCard(today: MobileToday) {
             text = if (quest == null) {
                 "Reflect or pick a new quest from the web app."
             } else {
-                "${quest.progress}/${quest.target} complete"
+                "${quest.progress}% complete - ${quest.duration}"
             },
             style = MaterialTheme.typography.bodyMedium,
             color = Color(0xFF475569),
@@ -150,6 +219,11 @@ private fun QuestCard(today: MobileToday) {
             text = today.quest.nextAction.reason,
             style = MaterialTheme.typography.bodyMedium,
             color = Color(0xFF475569),
+        )
+        Text(
+            text = today.quest.nextAction.href,
+            style = MaterialTheme.typography.bodySmall,
+            color = Color(0xFF64748B),
         )
     }
 }
@@ -183,14 +257,25 @@ private fun LauncherActions(today: MobileToday) {
 }
 
 @Composable
-private fun SettingsPanel() {
-    var baseUrl by remember { mutableStateOf("") }
-    var token by remember { mutableStateOf("") }
-
+private fun SettingsPanel(
+    baseUrl: String,
+    token: String,
+    status: String,
+    onBaseUrlChange: (String) -> Unit,
+    onTokenChange: (String) -> Unit,
+    onSave: () -> Unit,
+    onRefresh: () -> Unit,
+) {
     InfoCard(title = "Settings") {
+        Text(
+            text = "Status: $status",
+            style = MaterialTheme.typography.bodyMedium,
+            color = Color(0xFF475569),
+        )
+        Spacer(modifier = Modifier.height(6.dp))
         OutlinedTextField(
             value = baseUrl,
-            onValueChange = { baseUrl = it },
+            onValueChange = onBaseUrlChange,
             modifier = Modifier.fillMaxWidth(),
             label = { Text("Backend base URL") },
             singleLine = true,
@@ -198,11 +283,34 @@ private fun SettingsPanel() {
         Spacer(modifier = Modifier.height(10.dp))
         OutlinedTextField(
             value = token,
-            onValueChange = { token = it },
+            onValueChange = onTokenChange,
             modifier = Modifier.fillMaxWidth(),
-            label = { Text("JWT token placeholder") },
+            label = { Text("JWT token") },
             visualTransformation = PasswordVisualTransformation(),
             singleLine = true,
+        )
+        Spacer(modifier = Modifier.height(10.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Button(onClick = onSave, modifier = Modifier.weight(1f)) {
+                Text("Save")
+            }
+            Button(onClick = onRefresh, modifier = Modifier.weight(1f)) {
+                Text("Refresh")
+            }
+        }
+    }
+}
+
+@Composable
+private fun LoadingState(status: String) {
+    InfoCard(title = "Today") {
+        Text(
+            text = status,
+            style = MaterialTheme.typography.bodyLarge,
+            color = Color(0xFF475569),
         )
     }
 }
@@ -225,15 +333,8 @@ private fun InfoCard(title: String, content: @Composable () -> Unit) {
     }
 }
 
-private fun moodDisplay(mood: String): Pair<String, String> = when (mood.lowercase()) {
-    "focused" -> "\uD83C\uDFAF" to "focused"
-    "good", "steady" -> "\uD83D\uDE42" to mood
-    "low" -> "\uD83C\uDF27" to "low"
-    else -> "\u2728" to mood.ifBlank { "present" }
-}
-
 @Preview(showBackground = true)
 @Composable
 private fun TodayScreenPreview() {
-    TodayScreen(repository = FakeTodayRepository())
+    TodayScreen(settingsStore = InMemoryTodaySettingsStore())
 }
