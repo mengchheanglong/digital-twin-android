@@ -40,37 +40,86 @@ fun LauncherScreen(
             modifier = Modifier.fillMaxSize(),
             color = Color(0xFFF8FAFC),
         ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
-                    .padding(20.dp),
-                verticalArrangement = Arrangement.spacedBy(14.dp),
-            ) {
-                LauncherHeader()
-                SafetyCard()
-                if (isAppDrawerOpen) {
-                    LauncherAppDrawer(
-                        apps = apps,
-                        onLaunchApp = onLaunchApp,
-                        onClose = onCloseAppDrawer,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                } else {
-                    LauncherDailySurface(
-                        summary = todaySummary,
-                        onRefresh = onRefresh,
-                        onOpenCompanion = onOpenCompanion,
-                        onOpenAppDrawer = onOpenAppDrawer,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                }
-                LauncherEscapeActions(
+            if (isAppDrawerOpen) {
+                LauncherDrawerMode(
+                    apps = apps,
+                    onCloseAppDrawer = onCloseAppDrawer,
+                    onLaunchApp = onLaunchApp,
+                    onOpenSettings = onOpenSettings,
+                    onOpenCompanion = onOpenCompanion,
+                )
+            } else {
+                LauncherDailyMode(
+                    todaySummary = todaySummary,
+                    onRefresh = onRefresh,
+                    onOpenAppDrawer = onOpenAppDrawer,
                     onOpenSettings = onOpenSettings,
                     onOpenCompanion = onOpenCompanion,
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun LauncherDailyMode(
+    todaySummary: LauncherTodaySummary,
+    onRefresh: () -> Unit,
+    onOpenAppDrawer: () -> Unit,
+    onOpenSettings: () -> Unit,
+    onOpenCompanion: () -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(20.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp),
+    ) {
+        LauncherHeader()
+        SafetyCard()
+        LauncherDailySurface(
+            summary = todaySummary,
+            onRefresh = onRefresh,
+            onOpenCompanion = onOpenCompanion,
+            onOpenAppDrawer = onOpenAppDrawer,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        LauncherEscapeActions(
+            onOpenSettings = onOpenSettings,
+            onOpenCompanion = onOpenCompanion,
+        )
+    }
+}
+
+@Composable
+private fun LauncherDrawerMode(
+    apps: List<LauncherApp>,
+    onCloseAppDrawer: () -> Unit,
+    onLaunchApp: (LauncherApp) -> Unit,
+    onOpenSettings: () -> Unit,
+    onOpenCompanion: () -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(20.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp),
+    ) {
+        LauncherHeader()
+        SafetyCard()
+        LauncherAppDrawer(
+            apps = apps,
+            onLaunchApp = onLaunchApp,
+            onClose = onCloseAppDrawer,
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f),
+        )
+        LauncherEscapeActions(
+            onOpenSettings = onOpenSettings,
+            onOpenCompanion = onOpenCompanion,
+        )
     }
 }
 
