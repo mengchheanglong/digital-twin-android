@@ -3,7 +3,6 @@ package com.transcendiverse.digitaltwin.launcher
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
@@ -32,26 +31,23 @@ fun LauncherDailySurface(
     onOpenAppDrawer: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    MaterialTheme {
-        Surface(
-            modifier = modifier.fillMaxSize(),
-            color = Color(0xFFF8FAFC),
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        color = Color.Transparent,
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
-                    .padding(20.dp),
-                verticalArrangement = Arrangement.spacedBy(14.dp),
-            ) {
-                LauncherSummaryCard(summary)
-                LauncherActionButtons(
-                    actions = actions,
-                    onRefresh = onRefresh,
-                    onOpenCompanion = onOpenCompanion,
-                    onOpenAppDrawer = onOpenAppDrawer,
-                )
-            }
+            LauncherSummaryCard(summary)
+            LauncherActionButtons(
+                actions = actions,
+                onRefresh = onRefresh,
+                onOpenCompanion = onOpenCompanion,
+                onOpenAppDrawer = onOpenAppDrawer,
+            )
         }
     }
 }
