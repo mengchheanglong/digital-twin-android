@@ -1,0 +1,21 @@
+Implemented Launcher v0 Task C: Daily Surface.
+
+Files changed:
+- app/src/main/java/com/transcendiverse/digitaltwin/launcher/LauncherTodaySummary.kt
+- app/src/main/java/com/transcendiverse/digitaltwin/launcher/LauncherDailySurface.kt
+- app/src/main/java/com/transcendiverse/digitaltwin/launcher/LauncherSafetyActions.kt
+- app/src/test/java/com/transcendiverse/digitaltwin/LauncherTodaySummaryTest.kt
+- app/src/test/java/com/transcendiverse/digitaltwin/LauncherSafetyActionsTest.kt
+
+Behavior:
+- Converts CachedToday? into safe launcher copy for title, mood, streak, check-in status, quest, next action, cache label, and empty state.
+- Renders a cache-backed Compose launcher daily surface with Refresh, Open companion, and Open app drawer actions.
+- Adds pure safety action labels including Settings for shell integration.
+- Sanitizes copied launcher strings that contain obvious private markers, URLs, email-like text, or raw JSON braces.
+- Does not modify manifest or wire LauncherActivity.
+
+Verification passed:
+- git diff --check
+- ./gradlew.bat test --rerun-tasks
+- ./gradlew.bat lint --rerun-tasks
+- ./gradlew.bat assembleDebug --rerun-tasks
