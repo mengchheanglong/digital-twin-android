@@ -29,6 +29,19 @@ fun filterSelfPackage(
 ): List<LauncherApp> =
     apps.filterNot { app -> app.packageName == selfPackageName }
 
+fun searchLauncherApps(
+    apps: List<LauncherApp>,
+    query: String,
+): List<LauncherApp> {
+    val cleaned = query.trim()
+    if (cleaned.isBlank()) return apps
+
+    return apps.filter { app ->
+        app.label.contains(cleaned, ignoreCase = true) ||
+            app.packageName.contains(cleaned, ignoreCase = true)
+    }
+}
+
 class LauncherAppsRepository(
     private val packageManager: PackageManager,
     private val selfPackageName: String? = null,

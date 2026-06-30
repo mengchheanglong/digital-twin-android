@@ -1,5 +1,6 @@
 package com.transcendiverse.digitaltwin.launcher
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -25,11 +26,14 @@ import androidx.compose.ui.unit.dp
 fun LauncherScreen(
     todaySummary: LauncherTodaySummary,
     apps: List<LauncherApp>,
+    favoriteApps: List<LauncherApp>,
+    favoritePackageNames: Set<String>,
     isAppDrawerOpen: Boolean,
     onRefresh: () -> Unit,
     onOpenAppDrawer: () -> Unit,
     onCloseAppDrawer: () -> Unit,
     onLaunchApp: (LauncherApp) -> Unit,
+    onToggleFavorite: (LauncherApp) -> Unit,
     onOpenSettings: () -> Unit,
     onOpenCompanion: () -> Unit,
 ) {
@@ -41,16 +45,20 @@ fun LauncherScreen(
             if (isAppDrawerOpen) {
                 LauncherDrawerMode(
                     apps = apps,
+                    favoritePackageNames = favoritePackageNames,
                     onCloseAppDrawer = onCloseAppDrawer,
                     onLaunchApp = onLaunchApp,
+                    onToggleFavorite = onToggleFavorite,
                     onOpenSettings = onOpenSettings,
                     onOpenCompanion = onOpenCompanion,
                 )
             } else {
                 LauncherDailyMode(
                     todaySummary = todaySummary,
+                    favoriteApps = favoriteApps,
                     onRefresh = onRefresh,
                     onOpenAppDrawer = onOpenAppDrawer,
+                    onLaunchApp = onLaunchApp,
                     onOpenSettings = onOpenSettings,
                     onOpenCompanion = onOpenCompanion,
                 )
@@ -62,8 +70,10 @@ fun LauncherScreen(
 @Composable
 private fun LauncherDailyMode(
     todaySummary: LauncherTodaySummary,
+    favoriteApps: List<LauncherApp>,
     onRefresh: () -> Unit,
     onOpenAppDrawer: () -> Unit,
+    onLaunchApp: (LauncherApp) -> Unit,
     onOpenSettings: () -> Unit,
     onOpenCompanion: () -> Unit,
 ) {
@@ -82,6 +92,11 @@ private fun LauncherDailyMode(
             onOpenAppDrawer = onOpenAppDrawer,
             modifier = Modifier.fillMaxWidth(),
         )
+        LauncherFavoritesCard(
+            favoriteApps = favoriteApps,
+            onLaunchApp = onLaunchApp,
+            onOpenAppDrawer = onOpenAppDrawer,
+        )
         LauncherEscapeActions(
             onOpenSettings = onOpenSettings,
             onOpenCompanion = onOpenCompanion,
@@ -92,8 +107,10 @@ private fun LauncherDailyMode(
 @Composable
 private fun LauncherDrawerMode(
     apps: List<LauncherApp>,
+    favoritePackageNames: Set<String>,
     onCloseAppDrawer: () -> Unit,
     onLaunchApp: (LauncherApp) -> Unit,
+    onToggleFavorite: (LauncherApp) -> Unit,
     onOpenSettings: () -> Unit,
     onOpenCompanion: () -> Unit,
 ) {
@@ -107,7 +124,9 @@ private fun LauncherDrawerMode(
         SafetyCard()
         LauncherAppDrawer(
             apps = apps,
+            favoritePackageNames = favoritePackageNames,
             onLaunchApp = onLaunchApp,
+            onToggleFavorite = onToggleFavorite,
             onClose = onCloseAppDrawer,
             modifier = Modifier
                 .fillMaxWidth()
@@ -129,7 +148,7 @@ private fun LauncherHeader() {
             fontWeight = FontWeight.Bold,
         )
         Text(
-            text = "Safe home shell prototype",
+            text = "Prototype home shell — improve first, make real later",
             style = MaterialTheme.typography.titleMedium,
             color = Color(0xFF334155),
         )
@@ -140,15 +159,74 @@ private fun LauncherHeader() {
 private fun SafetyCard() {
     InfoCard(title = "Prototype mode") {
         Text(
-            text = "This selectable Home app will not make itself your default launcher.",
+            text = "This launcher is for direct testing before becoming your default Home app.",
             style = MaterialTheme.typography.bodyMedium,
             color = Color(0xFF475569),
         )
         Text(
-            text = "Use Settings or Companion anytime to leave this shell.",
+            text = "Settings and Companion stay visible so you always have an escape path.",
             style = MaterialTheme.typography.bodyMedium,
             color = Color(0xFF475569),
         )
+    }
+}
+
+@Composable
+private fun LauncherFavoritesCard(
+    favoriteApps: List<LauncherApp>,
+    onLaunchApp: (LauncherApp) -> Unit,
+    onOpenAppDrawer: () -> Unit,
+) {
+    InfoCard(title = "Favorites") {
+        if (favoriteApps.isEmpty()) {
+            Text(
+                text = "No favorite apps yet. Open Apps and tap ☆ to pin the apps you use most.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = Color(0xFF475569),
+            )
+            OutlinedButton(onClick = onOpenAppDrawer) {
+                Text("Choose favorites")
+            }
+        } else {
+            favoriteApps.take(MAX_HOME_FAVORITES).forEach { app ->
+                FavoriteAppShortcut(app = app, onLaunchApp = onLaunchApp)
+            }
+            if (favoriteApps.size > MAX_HOME_FAVORITES) {
+                Text(
+                    text = "+${favoriteApps.size - MAX_HOME_FAVORITES} more in Apps",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color(0xFF64748B),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun FavoriteAppShortcut(
+    app: LauncherApp,
+    onLaunchApp: (LauncherApp) -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onLaunchApp(app) }
+            .padding(vertical = 6.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Text(text = "★", color = Color(0xFFF59E0B))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = app.label,
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Text(
+                text = app.packageName,
+                style = MaterialTheme.typography.bodySmall,
+                color = Color(0xFF64748B),
+            )
+        }
     }
 }
 
@@ -186,7 +264,7 @@ private fun InfoCard(title: String, content: @Composable () -> Unit) {
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Text(text = title, style = MaterialTheme.typography.labelLarge, color = Color(0xFF64748B))
             content()
@@ -197,21 +275,25 @@ private fun InfoCard(title: String, content: @Composable () -> Unit) {
 @Preview(showBackground = true)
 @Composable
 private fun LauncherScreenPreview() {
+    val notes = LauncherApp(
+        packageName = "com.example.notes",
+        label = "Notes",
+        activityName = "com.example.notes.MainActivity",
+    )
     LauncherScreen(
         todaySummary = LauncherTodaySummary.from(null),
-        apps = listOf(
-            LauncherApp(
-                packageName = "com.example.notes",
-                label = "Notes",
-                activityName = "com.example.notes.MainActivity",
-            ),
-        ),
+        apps = listOf(notes),
+        favoriteApps = listOf(notes),
+        favoritePackageNames = setOf(notes.packageName),
         isAppDrawerOpen = false,
         onRefresh = {},
         onOpenAppDrawer = {},
         onCloseAppDrawer = {},
         onLaunchApp = {},
+        onToggleFavorite = {},
         onOpenSettings = {},
         onOpenCompanion = {},
     )
 }
+
+private const val MAX_HOME_FAVORITES = 5

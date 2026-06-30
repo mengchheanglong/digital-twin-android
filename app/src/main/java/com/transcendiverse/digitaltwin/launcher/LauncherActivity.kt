@@ -11,10 +11,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import com.transcendiverse.digitaltwin.MainActivity
-import kotlinx.coroutines.launch
 import com.transcendiverse.digitaltwin.data.SharedPreferencesTodayCacheStore
 import com.transcendiverse.digitaltwin.sync.TodaySyncScheduler
 import com.transcendiverse.digitaltwin.widget.TodayWidgetUpdater
+import kotlinx.coroutines.launch
 
 class LauncherActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -26,6 +26,7 @@ class LauncherActivity : ComponentActivity() {
             packageManager = packageManager,
             selfPackageName = packageName,
         )
+        val favoritesStore = LauncherFavoritesStore(this)
 
         fun loadSummary(): LauncherTodaySummary = LauncherTodaySummary.from(
             cachedToday = cacheStore.load(),
@@ -36,11 +37,14 @@ class LauncherActivity : ComponentActivity() {
             val coroutineScope = rememberCoroutineScope()
             var todaySummary by remember { mutableStateOf(loadSummary()) }
             var apps by remember { mutableStateOf(appsRepository.listLaunchableApps()) }
+            var favoritePackageNames by remember { mutableStateOf(favoritesStore.load()) }
             var isAppDrawerOpen by remember { mutableStateOf(false) }
 
             LauncherScreen(
                 todaySummary = todaySummary,
                 apps = apps,
+                favoriteApps = favoriteLauncherApps(apps, favoritePackageNames),
+                favoritePackageNames = favoritePackageNames,
                 isAppDrawerOpen = isAppDrawerOpen,
                 onRefresh = {
                     TodaySyncScheduler.enqueueOneTime(appContext)
@@ -62,6 +66,9 @@ class LauncherActivity : ComponentActivity() {
                         startActivity(launchIntent)
                         isAppDrawerOpen = false
                     }
+                },
+                onToggleFavorite = { app ->
+                    favoritePackageNames = favoritesStore.toggle(app.packageName)
                 },
                 onOpenSettings = {
                     startActivity(Intent(Settings.ACTION_SETTINGS))
