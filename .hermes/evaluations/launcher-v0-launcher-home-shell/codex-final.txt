@@ -1,0 +1,22 @@
+Task: Launcher v0 Task A - Home Shell + Manifest
+
+Changed files:
+- app/src/main/AndroidManifest.xml
+- app/src/main/java/com/transcendiverse/digitaltwin/launcher/LauncherActivity.kt
+- app/src/main/java/com/transcendiverse/digitaltwin/launcher/LauncherScreen.kt
+- app/src/test/java/com/transcendiverse/digitaltwin/LauncherManifestContractTest.kt
+- .hermes/evaluations/launcher-v0-launcher-home-shell/codex-final.txt
+
+Gates:
+- git diff --check: PASS
+- ./gradlew test --rerun-tasks: PASS
+- ./gradlew lint --rerun-tasks: PASS
+- ./gradlew assembleDebug --rerun-tasks: PASS
+
+Risk notes:
+- MainActivity remains the existing MAIN + LAUNCHER companion entry point.
+- LauncherActivity is a separate exported HOME + DEFAULT candidate and does not auto-select default Home.
+- Settings action opens Android Settings with Intent(Settings.ACTION_SETTINGS).
+- Companion action explicitly launches MainActivity.
+- App drawer and Today regions are placeholders only; app listing and cached Today rendering remain for later launcher-v0 tasks.
+- Launcher UI contains only prototype/safety copy and no credentials, tokens, backend URLs, or private status values.
