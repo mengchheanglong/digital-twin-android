@@ -1,0 +1,16 @@
+Implemented Launcher v0 Task B: App Drawer.
+
+Added:
+- LauncherApp model.
+- Pure helpers for valid app filtering, case-insensitive label/package sorting, and optional self-package filtering.
+- PackageManager-backed LauncherAppsRepository for launchable app discovery and launch intent construction.
+- Standalone Compose LauncherAppDrawer with list rows, close callback, launch callback, and empty state.
+- JVM tests covering invalid entry filtering, ordering, self-package filtering, and model field preservation.
+
+Verification:
+- git diff --check
+- ./gradlew.bat test --rerun-tasks
+- ./gradlew.bat lint --rerun-tasks
+- ./gradlew.bat assembleDebug --rerun-tasks
+
+All verification passed.
