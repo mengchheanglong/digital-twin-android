@@ -35,7 +35,17 @@ fun toggleFavoritePackage(
         .toSet()
 }
 
+fun toggleAllowedPackage(
+    allowedPackageNames: Set<String>,
+    packageName: String,
+): Set<String> = toggleFavoritePackage(allowedPackageNames, packageName)
+
 fun favoriteLauncherApps(
     apps: List<LauncherApp>,
     favoritePackageNames: Set<String>,
 ): List<LauncherApp> = apps.filter { app -> app.packageName in favoritePackageNames }
+
+fun allowedLauncherApps(
+    apps: List<LauncherApp>,
+    allowedPackageNames: Set<String>,
+): List<LauncherApp> = favoriteLauncherApps(apps, allowedPackageNames)

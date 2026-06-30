@@ -1,8 +1,10 @@
 package com.transcendiverse.digitaltwin
 
 import com.transcendiverse.digitaltwin.launcher.LauncherApp
+import com.transcendiverse.digitaltwin.launcher.allowedLauncherApps
 import com.transcendiverse.digitaltwin.launcher.favoriteLauncherApps
 import com.transcendiverse.digitaltwin.launcher.searchLauncherApps
+import com.transcendiverse.digitaltwin.launcher.toggleAllowedPackage
 import com.transcendiverse.digitaltwin.launcher.toggleFavoritePackage
 import org.junit.Assert.assertEquals
 import org.junit.Test
@@ -22,7 +24,7 @@ class LauncherUxModelTest {
     }
 
     @Test
-    fun favoritePackageToggleAddsAndRemovesCleanPackageNames() {
+    fun favoriteAndAllowedPackageToggleAddsAndRemovesCleanPackageNames() {
         val added = toggleFavoritePackage(emptySet(), " com.todo.notes ")
         assertEquals(setOf("com.todo.notes"), added)
 
@@ -31,10 +33,14 @@ class LauncherUxModelTest {
 
         val unchanged = toggleFavoritePackage(setOf("org.camera"), "   ")
         assertEquals(setOf("org.camera"), unchanged)
+
+        val allowed = toggleAllowedPackage(emptySet(), " net.mail ")
+        assertEquals(setOf("net.mail"), allowed)
+        assertEquals(emptySet<String>(), toggleAllowedPackage(allowed, "net.mail"))
     }
 
     @Test
-    fun favoriteLauncherAppsKeepRepositoryOrder() {
+    fun favoriteAndAllowedLauncherAppsKeepRepositoryOrder() {
         val apps = listOf(
             LauncherApp(packageName = "a", label = "Alpha", activityName = null),
             LauncherApp(packageName = "b", label = "Beta", activityName = null),
@@ -44,6 +50,10 @@ class LauncherUxModelTest {
         assertEquals(
             listOf("Alpha", "Charlie"),
             favoriteLauncherApps(apps, setOf("c", "a")).map { it.label },
+        )
+        assertEquals(
+            listOf("Alpha", "Charlie"),
+            allowedLauncherApps(apps, setOf("c", "a")).map { it.label },
         )
     }
 }

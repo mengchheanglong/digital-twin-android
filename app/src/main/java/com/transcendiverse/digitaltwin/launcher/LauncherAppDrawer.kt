@@ -9,10 +9,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.Button
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -41,7 +39,7 @@ fun LauncherAppDrawer(
 
     Surface(
         modifier = modifier,
-        color = Color.White,
+        color = Color.Transparent,
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
             DrawerHeader(
@@ -50,7 +48,7 @@ fun LauncherAppDrawer(
                 onQueryChange = { query = it },
                 onClose = onClose,
             )
-            HorizontalDivider()
+            HorizontalDivider(color = Color(0xFFE5E7EB))
             if (visibleApps.isEmpty()) {
                 EmptyDrawerState(query = query)
             } else {
@@ -65,9 +63,9 @@ fun LauncherAppDrawer(
                     ) { app ->
                         LauncherAppRow(
                             app = app,
-                            isFavorite = app.packageName in favoritePackageNames,
+                            isAllowed = app.packageName in favoritePackageNames,
                             onLaunchApp = onLaunchApp,
-                            onToggleFavorite = onToggleFavorite,
+                            onToggleAllowed = onToggleFavorite,
                         )
                     }
                 }
@@ -86,7 +84,7 @@ private fun DrawerHeader(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(20.dp),
+            .padding(bottom = 16.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         Row(
@@ -98,15 +96,16 @@ private fun DrawerHeader(
                     text = "Apps",
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.SemiBold,
+                    color = Color(0xFF111827),
                 )
                 Text(
-                    text = "$resultCount launchable",
+                    text = "$resultCount apps",
                     style = MaterialTheme.typography.bodySmall,
-                    color = Color(0xFF64748B),
+                    color = Color(0xFF6B7280),
                 )
             }
             TextButton(onClick = onClose) {
-                Text("Close")
+                Text("close")
             }
         }
         OutlinedTextField(
@@ -114,7 +113,7 @@ private fun DrawerHeader(
             onValueChange = onQueryChange,
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
-            label = { Text("Search apps") },
+            label = { Text("search") },
         )
     }
 }
@@ -124,22 +123,22 @@ private fun EmptyDrawerState(query: String) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(20.dp),
+            .padding(vertical = 18.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         Text(
-            text = if (query.isBlank()) "No apps found" else "No matching apps",
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.SemiBold,
+            text = if (query.isBlank()) "no apps found" else "no matching apps",
+            style = MaterialTheme.typography.bodyLarge,
+            color = Color(0xFF1F2937),
         )
         Text(
             text = if (query.isBlank()) {
-                "Launchable apps will appear here."
+                "launchable apps will appear here"
             } else {
-                "Try a shorter app or package name."
+                "try a shorter app or package name"
             },
             style = MaterialTheme.typography.bodyMedium,
-            color = Color(0xFF64748B),
+            color = Color(0xFF6B7280),
         )
     }
 }
@@ -147,41 +146,26 @@ private fun EmptyDrawerState(query: String) {
 @Composable
 private fun LauncherAppRow(
     app: LauncherApp,
-    isFavorite: Boolean,
+    isAllowed: Boolean,
     onLaunchApp: (LauncherApp) -> Unit,
-    onToggleFavorite: (LauncherApp) -> Unit,
+    onToggleAllowed: (LauncherApp) -> Unit,
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clickable { onLaunchApp(app) }
-            .padding(horizontal = 20.dp, vertical = 12.dp),
+            .padding(vertical = 12.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Column(
+        Text(
+            text = app.label,
             modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(2.dp),
-        ) {
-            Text(
-                text = app.label,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-            )
-            Text(
-                text = app.packageName,
-                style = MaterialTheme.typography.bodySmall,
-                color = Color(0xFF64748B),
-            )
-        }
-        if (isFavorite) {
-            Button(onClick = { onToggleFavorite(app) }) {
-                Text("★")
-            }
-        } else {
-            OutlinedButton(onClick = { onToggleFavorite(app) }) {
-                Text("☆")
-            }
+            style = MaterialTheme.typography.bodyLarge,
+            color = Color(0xFF1F2937),
+        )
+        TextButton(onClick = { onToggleAllowed(app) }) {
+            Text(if (isAllowed) "hide" else "allow")
         }
     }
-    HorizontalDivider()
+    HorizontalDivider(color = Color(0xFFE5E7EB))
 }
