@@ -38,13 +38,17 @@ import com.transcendiverse.digitaltwin.data.FakeTodayRepository
 import com.transcendiverse.digitaltwin.data.InMemoryTodayCacheStore
 import com.transcendiverse.digitaltwin.data.InMemoryTodaySettingsStore
 import com.transcendiverse.digitaltwin.data.LoginRepository
-import com.transcendiverse.digitaltwin.data.NetworkTodayRepository
 import com.transcendiverse.digitaltwin.data.NetworkLoginRepository
+import com.transcendiverse.digitaltwin.data.NetworkQuestRepository
+import com.transcendiverse.digitaltwin.data.NetworkTodayRepository
 import com.transcendiverse.digitaltwin.data.PRODUCTION_BACKEND_BASE_URL
+import com.transcendiverse.digitaltwin.data.QuestRepository
+import com.transcendiverse.digitaltwin.data.QuestSummary
 import com.transcendiverse.digitaltwin.data.TodayCacheStore
 import com.transcendiverse.digitaltwin.data.TodayRepository
 import com.transcendiverse.digitaltwin.data.TodaySettings
 import com.transcendiverse.digitaltwin.data.TodaySettingsStore
+import com.transcendiverse.digitaltwin.data.resolveActiveQuest
 import com.transcendiverse.digitaltwin.data.useProductionBackend
 import com.transcendiverse.digitaltwin.data.validateDailyCheckInRatings
 import com.transcendiverse.digitaltwin.model.MobileToday
@@ -64,6 +68,9 @@ fun TodayScreen(
     checkInRepositoryFactory: (String, String) -> CheckInRepository = { baseUrl, token ->
         NetworkCheckInRepository(baseUrl = baseUrl, token = token)
     },
+    questRepositoryFactory: (String, String) -> QuestRepository = { baseUrl, token ->
+        NetworkQuestRepository(baseUrl = baseUrl, token = token)
+    },
     onTodayCacheUpdated: suspend () -> Unit = {},
     onScheduleBackgroundSync: () -> Unit = {},
     onEnqueueBackgroundSync: () -> Unit = {},
@@ -75,6 +82,8 @@ fun TodayScreen(
     var password by remember { mutableStateOf("") }
     var today by remember { mutableStateOf<MobileToday?>(cachedToday?.today) }
     var checkInSubmitting by remember { mutableStateOf(false) }
+    var activeQuest by remember { mutableStateOf<QuestSummary?>(null) }
+    var questActionSubmitting by remember { mutableStateOf(false) }
     var status by remember {
         mutableStateOf(
             when {
@@ -85,6 +94,19 @@ fun TodayScreen(
         )
     }
     val scope = rememberCoroutineScope()
+
+    suspend fun resolveActiveQuestControls(settings: TodaySettings, loadedToday: MobileToday?) {
+        activeQuest = null
+        val currentQuest = loadedToday?.quest?.current
+        if (!settings.hasCredentials() || currentQuest == null) return
+
+        try {
+            val quests = questRepositoryFactory(settings.baseUrl, settings.token).listQuests()
+            activeQuest = resolveActiveQuest(currentQuest, quests)
+        } catch (error: Exception) {
+            status = "Quest controls unavailable: ${safeStatusErrorMessage(error, "Unable to load quests")}"
+        }
+    }
 
     suspend fun loadToday(settings: TodaySettings, loadedStatus: String? = null): Boolean {
         status = if (today == null) "Loading" else cacheStore.load()?.cachedAtEpochMillis?.let(::cachedStatus) ?: "Cached"
@@ -104,12 +126,37 @@ fun TodayScreen(
             } else {
                 "Fixture mode"
             }
+            resolveActiveQuestControls(settings, loadedToday)
             return true
         } catch (error: Exception) {
             val cached = cacheStore.load()
             today = cached?.today
             status = "Refresh failed: ${safeStatusErrorMessage(error, "Unable to load Today")}"
             return false
+        }
+    }
+
+    fun runQuestAction(
+        successStatus: (QuestSummary) -> String,
+        action: suspend (QuestRepository, QuestSummary) -> Unit,
+    ) {
+        val quest = activeQuest ?: return
+        scope.launch {
+            questActionSubmitting = true
+            try {
+                val repository = questRepositoryFactory(savedSettings.baseUrl, savedSettings.token)
+                action(repository, quest)
+                val statusText = successStatus(quest)
+                val refreshed = loadToday(savedSettings, loadedStatus = statusText)
+                if (!refreshed) {
+                    status = "$statusText - refresh failed; cached Today kept"
+                }
+                onEnqueueBackgroundSync()
+            } catch (error: Exception) {
+                status = "Quest action failed: ${safeStatusErrorMessage(error, "Unable to update quest")}"
+            } finally {
+                questActionSubmitting = false
+            }
         }
     }
 
@@ -165,7 +212,30 @@ fun TodayScreen(
                             },
                         )
                     }
-                    QuestCard(loadedToday)
+                    QuestCard(
+                        today = loadedToday,
+                        activeQuest = activeQuest.takeIf { savedSettings.hasCredentials() },
+                        submitting = questActionSubmitting,
+                        onDecreaseProgress = {
+                            runQuestAction(successStatus = { "Quest progress updated" }) { repository, quest ->
+                                repository.updateProgress(quest.id, (quest.progress - 10).coerceIn(0, 100))
+                            }
+                        },
+                        onIncreaseProgress = {
+                            runQuestAction(successStatus = { "Quest progress updated" }) { repository, quest ->
+                                repository.updateProgress(quest.id, (quest.progress + 10).coerceIn(0, 100))
+                            }
+                        },
+                        onToggleComplete = {
+                            runQuestAction(
+                                successStatus = { quest ->
+                                    if (quest.completed) "Quest reopened" else "Quest completed"
+                                },
+                            ) { repository, quest ->
+                                repository.toggleComplete(quest.id)
+                            }
+                        },
+                    )
                     InsightCard(loadedToday)
                     LauncherActions(loadedToday)
                 } ?: LoadingState(status)
@@ -406,7 +476,14 @@ private fun MetricCard(label: String, value: String, modifier: Modifier = Modifi
 }
 
 @Composable
-private fun QuestCard(today: MobileToday) {
+private fun QuestCard(
+    today: MobileToday,
+    activeQuest: QuestSummary?,
+    submitting: Boolean,
+    onDecreaseProgress: () -> Unit,
+    onIncreaseProgress: () -> Unit,
+    onToggleComplete: () -> Unit,
+) {
     val quest = today.quest.current
     InfoCard(title = "Quest") {
         Text(
@@ -424,6 +501,35 @@ private fun QuestCard(today: MobileToday) {
             style = MaterialTheme.typography.bodyMedium,
             color = Color(0xFF475569),
         )
+        if (quest != null && activeQuest != null) {
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Button(
+                    onClick = onDecreaseProgress,
+                    modifier = Modifier.weight(1f),
+                    enabled = !submitting && activeQuest.progress > 0,
+                ) {
+                    Text("-10%")
+                }
+                Button(
+                    onClick = onIncreaseProgress,
+                    modifier = Modifier.weight(1f),
+                    enabled = !submitting && activeQuest.progress < 100,
+                ) {
+                    Text("+10%")
+                }
+                Button(
+                    onClick = onToggleComplete,
+                    modifier = Modifier.weight(1f),
+                    enabled = !submitting,
+                ) {
+                    Text(if (activeQuest.completed) "Reopen" else "Complete")
+                }
+            }
+        }
         Spacer(modifier = Modifier.height(10.dp))
         Text(
             text = today.quest.nextAction.label,

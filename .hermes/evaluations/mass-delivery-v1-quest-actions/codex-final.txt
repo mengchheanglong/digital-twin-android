@@ -1,0 +1,34 @@
+Task A - Quest actions
+
+Files changed:
+- app/src/main/java/com/transcendiverse/digitaltwin/data/QuestRepository.kt
+- app/src/main/java/com/transcendiverse/digitaltwin/ui/TodayScreen.kt
+- app/src/test/java/com/transcendiverse/digitaltwin/NetworkQuestRepositoryTest.kt
+- .hermes/evaluations/mass-delivery-v1-quest-actions/codex-final.txt
+
+Implementation notes:
+- Added typed QuestRepository and NetworkQuestRepository using TodayHttpTransport/TodayHttpRequest/TodayHttpResponse.
+- Added DTO parsing for /api/quest/all arrays, progress responses, and complete responses with quest=null/deleted=true.
+- Added local validation for nonblank quest id and progress 0..100 before any network call.
+- Added active quest resolution helper: matching current goal + duration wins, otherwise first incomplete quest.
+- Wired TodayScreen to resolve quest id for signed-in users with a current quest and show -10%, +10%, Complete/Reopen controls.
+- Quest actions refresh Today through the existing cache/widget update path and enqueue background sync after the refresh attempt.
+
+TDD evidence:
+- RED: .\gradlew.bat :app:testDebugUnitTest --tests com.transcendiverse.digitaltwin.NetworkQuestRepositoryTest --rerun-tasks failed because NetworkQuestRepository, QuestSummary, QuestNetworkException, and resolveActiveQuest were unresolved.
+- GREEN: .\gradlew.bat :app:testDebugUnitTest --tests com.transcendiverse.digitaltwin.NetworkQuestRepositoryTest --rerun-tasks passed after implementation.
+
+Verification:
+- git diff --check passed. Git reported only the Windows line-ending conversion warning for TodayScreen.kt.
+- .\gradlew.bat test --rerun-tasks passed.
+- .\gradlew.bat lint --rerun-tasks passed.
+- .\gradlew.bat assembleDebug --rerun-tasks passed.
+
+Skipped items:
+- No phone install gate was requested by this task.
+- No docs changes were needed.
+
+Privacy notes:
+- Quest errors do not include token, password, email, backend URL, or raw JSON.
+- TodayScreen displays sanitized quest action and quest list errors through the existing safeStatusErrorMessage path.
+- The evaluation report contains no real credentials or backend secrets.
