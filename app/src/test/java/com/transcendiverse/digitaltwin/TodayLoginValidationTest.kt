@@ -1,5 +1,6 @@
 package com.transcendiverse.digitaltwin
 
+import com.transcendiverse.digitaltwin.ui.safeStatusErrorMessage
 import com.transcendiverse.digitaltwin.ui.validateLoginInput
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -38,6 +39,28 @@ class TodayLoginValidationTest {
                 email = "user@example.com",
                 password = "secret",
             ),
+        )
+    }
+
+    @Test
+    fun statusErrorSanitizerHidesPrivateBackendAndJsonDetails() {
+        val message = """
+            token abc password secret email user@example.com
+            backend https://digital-twin-orcin-omega.vercel.app
+            {"token":"abc","password":"secret","email":"user@example.com"}
+        """.trimIndent()
+
+        assertEquals(
+            "Unable to sign in",
+            safeStatusErrorMessage(Exception(message), "Unable to sign in"),
+        )
+    }
+
+    @Test
+    fun statusErrorSanitizerKeepsPlainOperationalDetails() {
+        assertEquals(
+            "HTTP 503",
+            safeStatusErrorMessage(Exception("HTTP 503"), "Unable to load Today"),
         )
     }
 }

@@ -40,10 +40,12 @@ import com.transcendiverse.digitaltwin.data.InMemoryTodaySettingsStore
 import com.transcendiverse.digitaltwin.data.LoginRepository
 import com.transcendiverse.digitaltwin.data.NetworkTodayRepository
 import com.transcendiverse.digitaltwin.data.NetworkLoginRepository
+import com.transcendiverse.digitaltwin.data.PRODUCTION_BACKEND_BASE_URL
 import com.transcendiverse.digitaltwin.data.TodayCacheStore
 import com.transcendiverse.digitaltwin.data.TodayRepository
 import com.transcendiverse.digitaltwin.data.TodaySettings
 import com.transcendiverse.digitaltwin.data.TodaySettingsStore
+import com.transcendiverse.digitaltwin.data.useProductionBackend
 import com.transcendiverse.digitaltwin.data.validateDailyCheckInRatings
 import com.transcendiverse.digitaltwin.model.MobileToday
 import java.text.DateFormat
@@ -210,7 +212,7 @@ fun TodayScreen(
                                 email = settings.lastUserEmail
                                 onScheduleBackgroundSync()
                                 onEnqueueBackgroundSync()
-                                loadToday(settings, loadedStatus = "Login successful - background sync scheduled")
+                                loadToday(settings, loadedStatus = "Signed in")
                             } catch (error: Exception) {
                                 status = "Login failed: ${safeStatusErrorMessage(error, "Unable to sign in")}"
                             }
@@ -222,11 +224,23 @@ fun TodayScreen(
                         onEnqueueBackgroundSync()
                         scope.launch { loadToday(settings) }
                     },
-                    onClearToken = {
-                        val settings = savedSettings.copy(token = "", lastUserName = "")
+                    onUseProduction = {
+                        val settings = savedSettings.useProductionBackend()
                         settingsStore.save(settings)
                         savedSettings = settings
-                        status = if (settings.baseUrl.isBlank()) "Fixture mode" else "Token cleared"
+                        baseUrl = settings.baseUrl
+                        status = "Production URL set"
+                    },
+                    onClearToken = {
+                        val settings = savedSettings.copy(
+                            token = "",
+                            lastUserEmail = "",
+                            lastUserName = "",
+                        )
+                        settingsStore.save(settings)
+                        savedSettings = settings
+                        email = ""
+                        status = "Signed out - fixture mode"
                     },
                 )
             }
@@ -471,21 +485,26 @@ private fun SettingsPanel(
     onSaveUrl: () -> Unit,
     onLogin: () -> Unit,
     onRefresh: () -> Unit,
+    onUseProduction: () -> Unit,
     onClearToken: () -> Unit,
 ) {
-    InfoCard(title = "Login") {
+    InfoCard(title = "Settings") {
         Text(
             text = "Status: $status",
             style = MaterialTheme.typography.bodyMedium,
             color = Color(0xFF475569),
         )
-        if (signedIn) {
-            Text(
-                text = "Signed in",
-                style = MaterialTheme.typography.bodySmall,
-                color = Color(0xFF0F766E),
-            )
-        }
+        Text(
+            text = if (signedIn) "Signed in" else "Signed out - fixture mode",
+            style = MaterialTheme.typography.bodySmall,
+            color = if (signedIn) Color(0xFF0F766E) else Color(0xFF64748B),
+        )
+        Spacer(modifier = Modifier.height(6.dp))
+        Text(
+            text = "Backend: ${baseUrl.ifBlank { PRODUCTION_BACKEND_BASE_URL }}",
+            style = MaterialTheme.typography.bodySmall,
+            color = Color(0xFF334155),
+        )
         Spacer(modifier = Modifier.height(6.dp))
         OutlinedTextField(
             value = baseUrl,
@@ -519,8 +538,12 @@ private fun SettingsPanel(
             Button(onClick = onSaveUrl, modifier = Modifier.weight(1f)) {
                 Text("Save URL")
             }
-            Button(onClick = onLogin, modifier = Modifier.weight(1f)) {
-                Text("Login")
+            Button(
+                onClick = onUseProduction,
+                modifier = Modifier.weight(1f),
+                enabled = baseUrl.trim() != PRODUCTION_BACKEND_BASE_URL,
+            ) {
+                Text("Use production")
             }
         }
         Spacer(modifier = Modifier.height(8.dp))
@@ -528,12 +551,16 @@ private fun SettingsPanel(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
+            Button(onClick = onLogin, modifier = Modifier.weight(1f)) {
+                Text("Login")
+            }
             Button(onClick = onRefresh, modifier = Modifier.weight(1f), enabled = signedIn) {
                 Text("Refresh")
             }
-            Button(onClick = onClearToken, modifier = Modifier.weight(1f), enabled = signedIn) {
-                Text("Clear token")
-            }
+        }
+        Spacer(modifier = Modifier.height(8.dp))
+        Button(onClick = onClearToken, modifier = Modifier.fillMaxWidth(), enabled = signedIn) {
+            Text("Clear login")
         }
     }
 }

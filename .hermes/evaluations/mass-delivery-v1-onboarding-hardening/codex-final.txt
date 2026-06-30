@@ -1,0 +1,22 @@
+Files changed:
+- app/src/main/java/com/transcendiverse/digitaltwin/data/TodayRepository.kt
+- app/src/main/java/com/transcendiverse/digitaltwin/ui/TodayScreen.kt
+- app/src/test/java/com/transcendiverse/digitaltwin/TodayLoginValidationTest.kt
+- app/src/test/java/com/transcendiverse/digitaltwin/TodaySettingsStoreTest.kt
+- .hermes/evaluations/mass-delivery-v1-onboarding-hardening/codex-final.txt
+
+Tests:
+- git diff --check: passed
+- ./gradlew test --rerun-tasks: passed
+- ./gradlew lint --rerun-tasks: passed
+- ./gradlew assembleDebug --rerun-tasks: passed
+
+Skipped items:
+- No Compose UI tests were added; the task requested JVM tests and asked to avoid fragile Compose UI tests.
+- No encrypted storage changes were made to keep the build stable and scope small.
+
+Privacy notes:
+- No real secrets, user passwords, user tokens, or user credentials were hardcoded.
+- The production backend URL is the only hardcoded endpoint.
+- Clear login removes token, last user email, and last user name without clearing cached Today data.
+- The status sanitizer test covers token, password, email, backend URL, and raw JSON redaction behavior.

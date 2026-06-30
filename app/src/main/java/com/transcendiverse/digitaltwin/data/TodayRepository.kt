@@ -116,13 +116,17 @@ class NetworkTodayRepository(
 }
 
 data class TodaySettings(
-    val baseUrl: String = "",
+    val baseUrl: String = PRODUCTION_BACKEND_BASE_URL,
     val token: String = "",
     val lastUserEmail: String = "",
     val lastUserName: String = "",
 ) {
     fun hasCredentials(): Boolean = baseUrl.isNotBlank() && token.isNotBlank()
 }
+
+const val PRODUCTION_BACKEND_BASE_URL = "https://digital-twin-orcin-omega.vercel.app"
+
+fun TodaySettings.useProductionBackend(): TodaySettings = copy(baseUrl = PRODUCTION_BACKEND_BASE_URL)
 
 interface TodaySettingsStore {
     fun load(): TodaySettings
@@ -147,7 +151,11 @@ class SharedPreferencesTodaySettingsStore(
     private val preferences = context.getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
 
     override fun load(): TodaySettings = TodaySettings(
-        baseUrl = preferences.getString(KEY_BASE_URL, "").orEmpty(),
+        baseUrl = if (preferences.contains(KEY_BASE_URL)) {
+            preferences.getString(KEY_BASE_URL, "").orEmpty()
+        } else {
+            PRODUCTION_BACKEND_BASE_URL
+        },
         token = preferences.getString(KEY_TOKEN, "").orEmpty(),
         lastUserEmail = preferences.getString(KEY_LAST_USER_EMAIL, "").orEmpty(),
         lastUserName = preferences.getString(KEY_LAST_USER_NAME, "").orEmpty(),
