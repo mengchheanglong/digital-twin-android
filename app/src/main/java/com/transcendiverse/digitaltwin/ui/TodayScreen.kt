@@ -16,6 +16,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -31,6 +32,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.transcendiverse.digitaltwin.data.CheckInRepository
+import com.transcendiverse.digitaltwin.data.NetworkCheckInRepository
 import com.transcendiverse.digitaltwin.data.FakeTodayRepository
 import com.transcendiverse.digitaltwin.data.InMemoryTodayCacheStore
 import com.transcendiverse.digitaltwin.data.InMemoryTodaySettingsStore
@@ -41,6 +44,7 @@ import com.transcendiverse.digitaltwin.data.TodayCacheStore
 import com.transcendiverse.digitaltwin.data.TodayRepository
 import com.transcendiverse.digitaltwin.data.TodaySettings
 import com.transcendiverse.digitaltwin.data.TodaySettingsStore
+import com.transcendiverse.digitaltwin.data.validateDailyCheckInRatings
 import com.transcendiverse.digitaltwin.model.MobileToday
 import java.text.DateFormat
 import java.util.Date
@@ -55,6 +59,9 @@ fun TodayScreen(
     networkRepositoryFactory: (String, String) -> TodayRepository = { baseUrl, token ->
         NetworkTodayRepository(baseUrl = baseUrl, token = token)
     },
+    checkInRepositoryFactory: (String, String) -> CheckInRepository = { baseUrl, token ->
+        NetworkCheckInRepository(baseUrl = baseUrl, token = token)
+    },
     onTodayCacheUpdated: suspend () -> Unit = {},
     onScheduleBackgroundSync: () -> Unit = {},
     onEnqueueBackgroundSync: () -> Unit = {},
@@ -65,6 +72,7 @@ fun TodayScreen(
     var email by remember { mutableStateOf(savedSettings.lastUserEmail) }
     var password by remember { mutableStateOf("") }
     var today by remember { mutableStateOf<MobileToday?>(cachedToday?.today) }
+    var checkInSubmitting by remember { mutableStateOf(false) }
     var status by remember {
         mutableStateOf(
             when {
@@ -76,7 +84,7 @@ fun TodayScreen(
     }
     val scope = rememberCoroutineScope()
 
-    suspend fun loadToday(settings: TodaySettings, loadedStatus: String? = null) {
+    suspend fun loadToday(settings: TodaySettings, loadedStatus: String? = null): Boolean {
         status = if (today == null) "Loading" else cacheStore.load()?.cachedAtEpochMillis?.let(::cachedStatus) ?: "Cached"
         val repository = if (settings.hasCredentials()) {
             networkRepositoryFactory(settings.baseUrl, settings.token)
@@ -94,10 +102,12 @@ fun TodayScreen(
             } else {
                 "Fixture mode"
             }
+            return true
         } catch (error: Exception) {
             val cached = cacheStore.load()
             today = cached?.today
-            status = "Refresh failed: ${error.message ?: "Unable to load Today"}"
+            status = "Refresh failed: ${safeStatusErrorMessage(error, "Unable to load Today")}"
+            return false
         }
     }
 
@@ -120,6 +130,39 @@ fun TodayScreen(
                 today?.let { loadedToday ->
                     Header(loadedToday)
                     StatusCards(loadedToday)
+                    if (savedSettings.hasCredentials()) {
+                        QuickCheckInCard(
+                            today = loadedToday,
+                            submitting = checkInSubmitting,
+                            onSubmit = { ratings ->
+                                val validationError = validateQuickCheckInRatings(ratings)
+                                if (validationError != null) {
+                                    status = "Check-in failed: $validationError"
+                                    return@QuickCheckInCard
+                                }
+
+                                scope.launch {
+                                    checkInSubmitting = true
+                                    try {
+                                        val result = checkInRepositoryFactory(
+                                            savedSettings.baseUrl,
+                                            savedSettings.token,
+                                        ).submitDaily(ratings)
+                                        val successStatus = "Check-in submitted: ${result.percentage}%"
+                                        val refreshed = loadToday(savedSettings, loadedStatus = successStatus)
+                                        if (!refreshed) {
+                                            status = "$successStatus - refresh failed; cached Today kept"
+                                        }
+                                        onEnqueueBackgroundSync()
+                            } catch (error: Exception) {
+                                status = "Check-in failed: ${safeStatusErrorMessage(error, "Unable to submit check-in")}"
+                            } finally {
+                                checkInSubmitting = false
+                            }
+                                }
+                            },
+                        )
+                    }
                     QuestCard(loadedToday)
                     InsightCard(loadedToday)
                     LauncherActions(loadedToday)
@@ -169,7 +212,7 @@ fun TodayScreen(
                                 onEnqueueBackgroundSync()
                                 loadToday(settings, loadedStatus = "Login successful - background sync scheduled")
                             } catch (error: Exception) {
-                                status = "Login failed: ${error.message ?: "Unable to sign in"}"
+                                status = "Login failed: ${safeStatusErrorMessage(error, "Unable to sign in")}"
                             }
                         }
                     },
@@ -243,6 +286,94 @@ private fun StatusCards(today: MobileToday) {
             style = MaterialTheme.typography.bodySmall,
             color = Color(0xFF64748B),
         )
+    }
+}
+
+@Composable
+private fun QuickCheckInCard(
+    today: MobileToday,
+    submitting: Boolean,
+    onSubmit: (List<Int>) -> Unit,
+) {
+    if (today.checkIn.completedToday) {
+        InfoCard(title = "Daily check-in") {
+            Text(
+                text = "Check-in complete",
+                style = MaterialTheme.typography.bodyMedium,
+                color = Color(0xFF0F766E),
+                fontWeight = FontWeight.SemiBold,
+            )
+        }
+        return
+    }
+
+    var ratings by remember(today.dayKey) { mutableStateOf(checkInPresetRatings(CheckInPreset.OKAY)) }
+
+    InfoCard(title = "Daily check-in") {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            CheckInPreset.entries.forEach { preset ->
+                Button(
+                    onClick = { ratings = checkInPresetRatings(preset) },
+                    modifier = Modifier.weight(1f),
+                    enabled = !submitting,
+                ) {
+                    Text(preset.label)
+                }
+            }
+        }
+        Spacer(modifier = Modifier.height(6.dp))
+        CHECK_IN_DIMENSIONS.forEachIndexed { index, label ->
+            RatingRow(
+                label = label,
+                rating = ratings[index],
+                enabled = !submitting,
+                onDecrease = { ratings = updateCheckInRating(ratings, index, -1) },
+                onIncrease = { ratings = updateCheckInRating(ratings, index, 1) },
+            )
+        }
+        Spacer(modifier = Modifier.height(8.dp))
+        Button(
+            onClick = { onSubmit(ratings) },
+            modifier = Modifier.fillMaxWidth(),
+            enabled = !submitting,
+        ) {
+            Text(if (submitting) "Submitting" else "Submit check-in")
+        }
+    }
+}
+
+@Composable
+private fun RatingRow(
+    label: String,
+    rating: Int,
+    enabled: Boolean,
+    onDecrease: () -> Unit,
+    onIncrease: () -> Unit,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Text(
+            text = label,
+            modifier = Modifier.weight(1f),
+            style = MaterialTheme.typography.bodyMedium,
+            color = Color(0xFF334155),
+        )
+        TextButton(onClick = onDecrease, enabled = enabled && rating > 1) {
+            Text("-")
+        }
+        Text(
+            text = rating.toString(),
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.SemiBold,
+        )
+        TextButton(onClick = onIncrease, enabled = enabled && rating < 5) {
+            Text("+")
+        }
     }
 }
 
@@ -414,12 +545,53 @@ fun validateLoginInput(baseUrl: String, email: String, password: String): String
     else -> null
 }
 
+enum class CheckInPreset(val label: String) {
+    LOW("Low"),
+    OKAY("Okay"),
+    STRONG("Strong"),
+}
+
+fun checkInPresetRatings(preset: CheckInPreset): List<Int> = when (preset) {
+    CheckInPreset.LOW -> listOf(2, 2, 2, 2, 2)
+    CheckInPreset.OKAY -> listOf(3, 3, 3, 3, 3)
+    CheckInPreset.STRONG -> listOf(4, 4, 4, 4, 4)
+}
+
+fun updateCheckInRating(ratings: List<Int>, index: Int, delta: Int): List<Int> =
+    ratings.mapIndexed { currentIndex, rating ->
+        if (currentIndex == index) (rating + delta).coerceIn(1, 5) else rating
+    }
+
+fun validateQuickCheckInRatings(ratings: List<Int>): String? =
+    try {
+        validateDailyCheckInRatings(ratings)
+        null
+    } catch (_: IllegalArgumentException) {
+        "Must provide exactly 5 ratings from 1 to 5."
+    }
+
+fun safeStatusErrorMessage(error: Exception, fallback: String): String =
+    error.message?.takeUnless(::containsPrivateStatusText) ?: fallback
+
+private fun containsPrivateStatusText(message: String): Boolean {
+    val lower = message.lowercase()
+    return listOf("token", "password", "bearer", "http://", "https://", "@", "{", "}").any { lower.contains(it) }
+}
+
 fun cachedStatus(cachedAtEpochMillis: Long): String = "Cached - last updated ${formatTimestamp(cachedAtEpochMillis)}"
 
 fun lastUpdatedStatus(cachedAtEpochMillis: Long): String = "Last updated ${formatTimestamp(cachedAtEpochMillis)}"
 
 private fun formatTimestamp(epochMillis: Long): String =
     DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT).format(Date(epochMillis))
+
+private val CHECK_IN_DIMENSIONS = listOf(
+    "Energy",
+    "Focus",
+    "Stress control",
+    "Social connection",
+    "Optimism",
+)
 
 @Composable
 private fun LoadingState(status: String) {

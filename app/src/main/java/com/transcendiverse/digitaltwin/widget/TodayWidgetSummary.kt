@@ -33,12 +33,17 @@ data class TodayWidgetSummary(
             }
 
             val today = cachedToday.today
+            val nextAction = if (!today.checkIn.completedToday) {
+                "Open app to check in"
+            } else {
+                today.quest.nextAction.label
+            }
             return TodayWidgetSummary(
                 title = TITLE,
                 mood = "${today.user.mood.emoji} ${today.user.mood.label}",
                 streak = "${today.user.streak} day streak",
                 quest = today.quest.current?.goal ?: "No active quest",
-                nextAction = today.quest.nextAction.label,
+                nextAction = nextAction,
                 cacheLabel = "Cached",
             )
         }

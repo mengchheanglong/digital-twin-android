@@ -27,9 +27,18 @@ class TodayWidgetSummaryTest {
         assertEquals("🎯 focused", summary.mood)
         assertEquals("5 day streak", summary.streak)
         assertEquals("Ship the smallest useful companion", summary.quest)
-        assertEquals("Check in", summary.nextAction)
+        assertEquals("Open app to check in", summary.nextAction)
         assertEquals("Cached", summary.cacheLabel)
         assertEquals("Tap to refresh", summary.refreshLabel)
+    }
+
+    @Test
+    fun incompleteCheckInEncouragesOpeningAppForCheckIn() {
+        val summary = TodayWidgetSummary.from(
+            CachedToday(today = today, cachedAtEpochMillis = 1_798_588_800_000),
+        )
+
+        assertEquals("Open app to check in", summary.nextAction)
     }
 
     @Test
