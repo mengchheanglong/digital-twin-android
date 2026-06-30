@@ -1,10 +1,10 @@
 # Widget v0
 
-Widget v0 is implemented with AndroidX Glance and is intentionally cache-only.
+Widget v0 is implemented with AndroidX Glance and renders only cached Today data.
 
 ## Behavior
 
-The widget reads the last successful cached `/api/mobile/today` payload through `SharedPreferencesTodayCacheStore`. It does not perform network fetches, background polling, WorkManager jobs, notifications, or launcher/default-home behavior.
+The widget reads the last successful cached `/api/mobile/today` payload through `SharedPreferencesTodayCacheStore`. Its refresh action enqueues a one-time WorkManager Today sync and then updates the widget from cache. It does not perform direct network fetches, notifications, or launcher/default-home behavior.
 
 Displayed fields:
 
@@ -13,7 +13,8 @@ Displayed fields:
 - streak
 - current quest goal or `No active quest`
 - next action label
-- `Open app to refresh`
+- `Cached`
+- `Tap to refresh`
 
 If no cached Today payload exists, the widget shows `Digital Twin` and `Open app to refresh Today`.
 

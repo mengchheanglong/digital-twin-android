@@ -22,7 +22,8 @@ The app can run in fixture mode or call the real backend when a backend base URL
 - Settings panel for backend base URL and JWT/token input, with Save and Refresh actions
 - Unit tests for serialization, action priority, privacy guardrails, HTTP request/response behavior, and settings storage
 - Local cache for the last successful Today payload
-- Glance home-screen widget v0 backed only by cached Today data
+- Glance home-screen widget backed by cached Today data with a manual background refresh action
+- WorkManager one-shot and periodic background Today sync using saved backend credentials
 
 ## Mobile Today client
 
@@ -45,7 +46,9 @@ Authorization: Bearer <token>
 Accept: application/json
 ```
 
-When either value is missing, the Today screen renders the local fixture and shows fixture mode. Successful fixture and network loads are cached locally. On app start, a cached Today payload is shown immediately while refresh can run. HTTP failures and invalid JSON are shown as concise refresh-failure status text without blanking an already cached Today view.
+When either value is missing, the Today screen renders the local fixture and shows fixture mode. Successful fixture and network loads are cached locally. On app start, a cached Today payload is shown immediately while refresh can run. HTTP failures and invalid JSON are shown as concise refresh-failure status text without blanking an already cached Today view. The screen also shows cached/last-updated status when cache metadata exists.
+
+Background Today sync is implemented through WorkManager. App startup schedules periodic sync, login schedules periodic sync and enqueues an immediate sync, and manual/app/widget refresh actions enqueue one-time sync. The worker skips safely when saved credentials are missing.
 
 Settings are stored in app-private `SharedPreferences` for this v1 slice. Before a real release, token storage should move to encrypted storage such as AndroidX Security encrypted preferences or an equivalent platform-backed credential store.
 
@@ -53,7 +56,7 @@ Settings are stored in app-private `SharedPreferences` for this v1 slice. Before
 
 This is not a launcher replacement. The native launcher/default-home implementation is deferred so the first Android slice can stabilize the API contract, UI, and privacy boundaries before taking over high-risk device behavior.
 
-Widget v0 is implemented with AndroidX Glance. It reads only the local cached Today payload and displays a privacy-safe summary: app title, mood, streak, quest goal or fallback, next action label, and an open-app refresh hint. It does not fetch from the network, poll in the background, or display token, password, email, backend URL, raw JSON, journal, chat, or reflection content.
+The widget is implemented with AndroidX Glance. It reads only the local cached Today payload and displays a privacy-safe summary: app title, mood, streak, quest goal or fallback, next action label, cache label, and a tap-to-refresh action. The refresh action enqueues WorkManager sync and then refreshes the widget from cache. It does not display token, password, email, backend URL, raw JSON, journal, chat, or reflection content.
 
 ## Build
 
@@ -68,6 +71,7 @@ Recommended versions used by this scaffold:
 - Compose BOM: `2026.06.00`
 - Activity Compose: `1.13.0`
 - AndroidX Glance AppWidget: `1.1.1`
+- AndroidX WorkManager: `2.11.0`
 - kotlinx-serialization-json: `1.11.0`
 
 `androidx.lifecycle:lifecycle-runtime-compose:2.11.0` is intentionally not included in this scaffold because its published metadata requires compile SDK 37 and AGP 9.1+, while this project follows the handoff's compile SDK 36 and AGP 9.0.1 target.

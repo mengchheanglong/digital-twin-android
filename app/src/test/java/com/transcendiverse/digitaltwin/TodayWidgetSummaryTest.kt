@@ -28,7 +28,8 @@ class TodayWidgetSummaryTest {
         assertEquals("5 day streak", summary.streak)
         assertEquals("Ship the smallest useful companion", summary.quest)
         assertEquals("Check in", summary.nextAction)
-        assertEquals("Open app to refresh", summary.cacheLabel)
+        assertEquals("Cached", summary.cacheLabel)
+        assertEquals("Tap to refresh", summary.refreshLabel)
     }
 
     @Test
@@ -37,6 +38,7 @@ class TodayWidgetSummaryTest {
 
         assertEquals("Digital Twin", summary.title)
         assertEquals("Open app to refresh Today", summary.emptyMessage)
+        assertEquals("Tap to refresh", summary.refreshLabel)
     }
 
     @Test

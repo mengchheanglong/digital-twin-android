@@ -9,6 +9,7 @@ data class TodayWidgetSummary(
     val quest: String? = null,
     val nextAction: String? = null,
     val cacheLabel: String? = null,
+    val refreshLabel: String = "Tap to refresh",
     val emptyMessage: String? = null,
 ) {
     fun toDisplayText(): String = listOfNotNull(
@@ -18,6 +19,7 @@ data class TodayWidgetSummary(
         quest,
         nextAction,
         cacheLabel,
+        refreshLabel,
         emptyMessage,
     ).joinToString(separator = "\n")
 
@@ -37,7 +39,7 @@ data class TodayWidgetSummary(
                 streak = "${today.user.streak} day streak",
                 quest = today.quest.current?.goal ?: "No active quest",
                 nextAction = today.quest.nextAction.label,
-                cacheLabel = "Open app to refresh",
+                cacheLabel = "Cached",
             )
         }
 

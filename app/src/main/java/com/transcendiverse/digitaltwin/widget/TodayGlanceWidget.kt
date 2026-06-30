@@ -6,10 +6,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
+import androidx.glance.action.ActionParameters
 import androidx.glance.action.actionStartActivity
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.GlanceAppWidgetReceiver
+import androidx.glance.appwidget.action.ActionCallback
+import androidx.glance.appwidget.action.actionRunCallback
 import androidx.glance.appwidget.provideContent
 import androidx.glance.appwidget.updateAll
 import androidx.glance.layout.Column
@@ -21,6 +24,7 @@ import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
 import com.transcendiverse.digitaltwin.MainActivity
 import com.transcendiverse.digitaltwin.data.SharedPreferencesTodayCacheStore
+import com.transcendiverse.digitaltwin.sync.TodaySyncScheduler
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -43,6 +47,17 @@ class TodayGlanceWidgetReceiver : GlanceAppWidgetReceiver() {
 object TodayWidgetUpdater {
     suspend fun update(context: Context) {
         TodayGlanceWidget().updateAll(context)
+    }
+}
+
+class RefreshTodayActionCallback : ActionCallback {
+    override suspend fun onAction(
+        context: Context,
+        glanceId: GlanceId,
+        parameters: ActionParameters,
+    ) {
+        TodaySyncScheduler.enqueueOneTime(context)
+        TodayWidgetUpdater.update(context)
     }
 }
 
@@ -73,6 +88,14 @@ private fun TodayWidgetContent(summary: TodayWidgetSummary) {
             WidgetLine(summary.nextAction)
             WidgetLine(summary.cacheLabel, muted = true)
         }
+        Text(
+            text = summary.refreshLabel,
+            modifier = GlanceModifier.clickable(actionRunCallback<RefreshTodayActionCallback>()),
+            style = TextStyle(
+                color = ColorProvider(Color(0xFF0F766E)),
+                fontWeight = FontWeight.Bold,
+            ),
+        )
     }
 }
 

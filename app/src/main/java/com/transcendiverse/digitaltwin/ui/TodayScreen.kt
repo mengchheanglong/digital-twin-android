@@ -42,6 +42,8 @@ import com.transcendiverse.digitaltwin.data.TodayRepository
 import com.transcendiverse.digitaltwin.data.TodaySettings
 import com.transcendiverse.digitaltwin.data.TodaySettingsStore
 import com.transcendiverse.digitaltwin.model.MobileToday
+import java.text.DateFormat
+import java.util.Date
 import kotlinx.coroutines.launch
 
 @Composable
@@ -54,6 +56,8 @@ fun TodayScreen(
         NetworkTodayRepository(baseUrl = baseUrl, token = token)
     },
     onTodayCacheUpdated: suspend () -> Unit = {},
+    onScheduleBackgroundSync: () -> Unit = {},
+    onEnqueueBackgroundSync: () -> Unit = {},
 ) {
     var savedSettings by remember { mutableStateOf(settingsStore.load()) }
     val cachedToday = remember { cacheStore.load() }
@@ -64,7 +68,7 @@ fun TodayScreen(
     var status by remember {
         mutableStateOf(
             when {
-                cachedToday != null -> "Cached"
+                cachedToday != null -> cachedStatus(cachedToday.cachedAtEpochMillis)
                 savedSettings.hasCredentials() -> "Loading"
                 else -> "Fixture mode"
             },
@@ -73,7 +77,7 @@ fun TodayScreen(
     val scope = rememberCoroutineScope()
 
     suspend fun loadToday(settings: TodaySettings, loadedStatus: String? = null) {
-        status = if (today == null) "Loading" else "Cached"
+        status = if (today == null) "Loading" else cacheStore.load()?.cachedAtEpochMillis?.let(::cachedStatus) ?: "Cached"
         val repository = if (settings.hasCredentials()) {
             networkRepositoryFactory(settings.baseUrl, settings.token)
         } else {
@@ -85,7 +89,11 @@ fun TodayScreen(
             today = loadedToday
             cacheStore.save(loadedToday)
             onTodayCacheUpdated()
-            status = loadedStatus ?: if (settings.hasCredentials()) "Loaded" else "Fixture mode"
+            status = loadedStatus ?: if (settings.hasCredentials()) {
+                cacheStore.load()?.cachedAtEpochMillis?.let(::lastUpdatedStatus) ?: "Loaded"
+            } else {
+                "Fixture mode"
+            }
         } catch (error: Exception) {
             val cached = cacheStore.load()
             today = cached?.today
@@ -157,7 +165,9 @@ fun TodayScreen(
                                 settingsStore.save(settings)
                                 savedSettings = settings
                                 email = settings.lastUserEmail
-                                loadToday(settings, loadedStatus = "Login successful")
+                                onScheduleBackgroundSync()
+                                onEnqueueBackgroundSync()
+                                loadToday(settings, loadedStatus = "Login successful - background sync scheduled")
                             } catch (error: Exception) {
                                 status = "Login failed: ${error.message ?: "Unable to sign in"}"
                             }
@@ -166,6 +176,7 @@ fun TodayScreen(
                     onRefresh = {
                         val settings = savedSettings.copy(baseUrl = baseUrl.trim())
                         savedSettings = settings
+                        onEnqueueBackgroundSync()
                         scope.launch { loadToday(settings) }
                     },
                     onClearToken = {
@@ -402,6 +413,13 @@ fun validateLoginInput(baseUrl: String, email: String, password: String): String
     password.isBlank() -> "Password is required"
     else -> null
 }
+
+fun cachedStatus(cachedAtEpochMillis: Long): String = "Cached - last updated ${formatTimestamp(cachedAtEpochMillis)}"
+
+fun lastUpdatedStatus(cachedAtEpochMillis: Long): String = "Last updated ${formatTimestamp(cachedAtEpochMillis)}"
+
+private fun formatTimestamp(epochMillis: Long): String =
+    DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT).format(Date(epochMillis))
 
 @Composable
 private fun LoadingState(status: String) {
