@@ -1,0 +1,22 @@
+Task C Android CI/release hygiene complete.
+
+Files changed:
+- .github/workflows/android.yml
+- README.md
+- docs/mobile-companion-mass-delivery-v1.md
+- .hermes/evaluations/mass-delivery-v1-android-ci/codex-final.txt
+
+Verification:
+- YAML syntax: passed with Python PyYAML.
+- git diff --check: passed; Git reported line-ending normalization warnings for README.md and docs/mobile-companion-mass-delivery-v1.md.
+- ./gradlew test --rerun-tasks: passed using local Android Studio JBR and Android SDK.
+- ./gradlew lint --rerun-tasks: passed using local Android Studio JBR and Android SDK.
+- ./gradlew assembleDebug --rerun-tasks: passed using local Android Studio JBR and Android SDK.
+
+Skipped items:
+- No JVM tests were added because this task only changes workflow/docs/evaluation files.
+- No release signing, Play deployment, keystore, or secret validation was added.
+
+Privacy notes:
+- No real secrets, tokens, signing keys, release keystores, Play credentials, API keys, JWTs, passwords, MongoDB URIs, or .env values were added.
+- Documentation explicitly warns that real secrets must not be committed.

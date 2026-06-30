@@ -260,6 +260,7 @@ Make future batches faster:
 - Add `.github/workflows/android.yml` running Gradle test/lint/assembleDebug on push/PR.
 - Cache Gradle dependencies safely.
 - Document local build/install commands and backend URL in README/docs.
+- CI must use JDK 21 and must not include secrets, signing keys, release keystores, Play deployment, or API tokens.
 - Do not introduce secrets or deployment keys.
 
 ## Merge strategy

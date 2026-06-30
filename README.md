@@ -9,7 +9,7 @@ GET /api/mobile/today
 Authorization: Bearer <token>
 ```
 
-The app can run in fixture mode or call the real backend when a backend base URL and JWT/token are saved in Settings. It does not include or hardcode any real token.
+The app can run in fixture mode or call the real backend when a backend base URL and JWT/token are saved in Settings. The production backend base URL is `https://digital-twin-orcin-omega.vercel.app`. It does not include or hardcode any real token.
 
 ## Included
 
@@ -83,3 +83,23 @@ Run:
 ./gradlew lint
 ./gradlew assembleDebug
 ```
+
+For a full local verification pass from Windows Git Bash:
+
+```bash
+export JAVA_HOME="/c/Program Files/Android/Android Studio/jbr"
+export ANDROID_HOME="/c/Users/User/AppData/Local/Android/Sdk"
+export ANDROID_SDK_ROOT="$ANDROID_HOME"
+git diff --check
+./gradlew test --rerun-tasks
+./gradlew lint --rerun-tasks
+./gradlew assembleDebug --rerun-tasks
+```
+
+Install the debug APK on a connected device:
+
+```bash
+adb install -r app/build/outputs/apk/debug/app-debug.apk
+```
+
+Real secrets must not be committed. Keep JWTs, passwords, signing keys, release keystores, Play deployment credentials, API tokens, and `.env` values out of the repository.
