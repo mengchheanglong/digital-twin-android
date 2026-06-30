@@ -33,6 +33,74 @@ git diff --check
 
 11. Final APK is installed and launched on the connected phone once.
 
+## Operator checklist
+
+Use this checklist before asking anyone to select Digital Twin as the device Home app.
+
+### Build gates
+
+- Confirm the worktree contains no secrets, generated release artifacts, keystores, token values, passwords, or `.env` files.
+- Confirm the normal companion app entry point still exists and the launcher prototype does not auto-select itself as default Home.
+- Run the required local gates:
+
+```bash
+export JAVA_HOME="/c/Program Files/Android/Android Studio/jbr"
+export ANDROID_HOME="/c/Users/User/AppData/Local/Android/Sdk"
+export ANDROID_SDK_ROOT="$ANDROID_HOME"
+git diff --check
+./gradlew test --rerun-tasks
+./gradlew lint --rerun-tasks
+./gradlew assembleDebug --rerun-tasks
+```
+
+### Install command
+
+Install only after the build gates pass:
+
+```bash
+adb devices -l
+adb -s <phone-serial> install -r app/build/outputs/apk/debug/app-debug.apk
+```
+
+### Verify HOME resolver command
+
+Confirm Android can resolve Digital Twin as a Home candidate:
+
+```bash
+adb -s <phone-serial> shell cmd package resolve-activity --brief -a android.intent.action.MAIN -c android.intent.category.HOME com.transcendiverse.digitaltwin
+```
+
+Expected result: the resolver output names the Digital Twin package or launcher activity. If it does not, do not continue to default Home selection.
+
+### Manual phone checks
+
+- Launch the normal companion app and confirm login, Today, check-in, quest actions, widget refresh, and background sync still behave as expected.
+- Open Settings -> Apps -> Default apps -> Home app and confirm Digital Twin appears as a selectable Home app.
+- Select Digital Twin only on a test device after the app drawer and Settings escape controls are visible.
+- Press Home and confirm the Digital Twin launcher surface opens with a clear prototype warning.
+- Open Android Settings from the launcher escape control.
+- Open the Digital Twin companion app from the launcher escape control.
+- Open the app drawer, verify installed apps are listed, and launch at least one non-Digital Twin app.
+- Confirm no token, password, email, backend URL, raw JSON, journal, chat, or reflection content appears on the launcher surface.
+
+### Rollback and switch-back steps
+
+- Preferred switch-back: open Android Settings -> Apps -> Default apps -> Home app, then select the system launcher such as Pixel Launcher, One UI Home, or the OEM launcher.
+- If the launcher UI is usable but not ready, switch back to the system launcher and keep Digital Twin installed only as a selectable prototype.
+- If the launcher blocks normal use, open Settings from the notification shade or via ADB:
+
+```bash
+adb -s <phone-serial> shell am start -a android.settings.SETTINGS
+```
+
+- If needed, uninstall the debug build from ADB:
+
+```bash
+adb -s <phone-serial> uninstall com.transcendiverse.digitaltwin
+```
+
+- After rollback, press Home and confirm the original system launcher opens.
+
 ## Non-goals
 
 - Do not force Digital Twin to become default Home app.

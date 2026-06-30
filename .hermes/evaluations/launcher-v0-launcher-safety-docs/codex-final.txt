@@ -1,0 +1,13 @@
+Implemented launcher v0 safety documentation.
+
+Changed:
+- Added README Launcher prototype guidance covering Home app meaning, enable path, switch-back path, prototype warning, and no-secret hygiene.
+- Added an operator checklist to docs/launcher-v0-mass-deployment.md covering build gates, debug APK install, HOME resolver verification, manual phone checks, and rollback/switch-back steps.
+
+No Android manifest or source files were changed.
+
+Verification passed:
+- git diff --check
+- ./gradlew test --rerun-tasks
+- ./gradlew lint --rerun-tasks
+- ./gradlew assembleDebug --rerun-tasks
