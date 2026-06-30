@@ -131,3 +131,13 @@ adb -s <phone> shell am start -W -n com.transcendiverse.digitaltwin/.launcher.La
 adb -s <phone> shell dumpsys window | grep -E 'mCurrentFocus|mFocusedApp'
 adb -s <phone> logcat -d | grep -iE 'com.transcendiverse.digitaltwin|FATAL EXCEPTION|AndroidRuntime'
 ```
+
+## v3 Polish Addendum
+
+The v3 slice keeps the prototype-only launcher shape and moves the UI closer to a calm text launcher:
+
+- home and drawer actions use muted gray text instead of default Material accent color;
+- the home title is medium-weight and quieter;
+- Today remains compact line-based copy and strips noisy symbol/emoji display characters;
+- the drawer still has search and bounded app rows with plain app names plus `allow` / `hide`;
+- visible package names, icons, star glyphs, default-home automation, and root scrolling remain out of scope.

@@ -22,6 +22,8 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
+internal val LauncherMutedActionColor = Color(0xFF374151)
+
 @Composable
 fun LauncherScreen(
     todaySummary: LauncherTodaySummary,
@@ -144,13 +146,13 @@ private fun LauncherHeader() {
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Text(
             text = "Digital Twin",
-            style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.SemiBold,
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Medium,
             color = Color(0xFF111827),
         )
         Text(
             text = dateLabel,
-            style = MaterialTheme.typography.bodyLarge,
+            style = MaterialTheme.typography.bodyMedium,
             color = Color(0xFF4B5563),
         )
     }
@@ -223,26 +225,36 @@ private fun LauncherEscapeActions(
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         onOpenAppDrawer?.let { openAppDrawer ->
-            TextButton(onClick = openAppDrawer) {
-                Text("all apps")
-            }
+            LauncherTextAction(text = "all apps", onClick = openAppDrawer)
         }
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            TextButton(onClick = onOpenCompanion) {
-                Text("companion")
-            }
-            TextButton(onClick = onOpenSettings) {
-                Text("settings")
-            }
+            LauncherTextAction(text = "companion", onClick = onOpenCompanion)
+            LauncherTextAction(text = "settings", onClick = onOpenSettings)
             onRefresh?.let { refresh ->
-                TextButton(onClick = refresh) {
-                    Text("refresh")
-                }
+                LauncherTextAction(text = "refresh", onClick = refresh)
             }
         }
+    }
+}
+
+@Composable
+internal fun LauncherTextAction(
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    TextButton(
+        onClick = onClick,
+        modifier = modifier,
+    ) {
+        Text(
+            text = text,
+            color = LauncherMutedActionColor,
+            style = MaterialTheme.typography.bodyMedium,
+        )
     }
 }
 

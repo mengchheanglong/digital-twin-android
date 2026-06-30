@@ -40,12 +40,12 @@ private fun LauncherTodayLines(summary: LauncherTodaySummary) {
         Text(
             text = "Today",
             style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.SemiBold,
+            fontWeight = FontWeight.Medium,
             color = Color(0xFF111827),
         )
-        SummaryLine(label = "Mood", value = summary.mood ?: "open companion")
-        SummaryLine(label = "Quest", value = summary.currentQuest ?: "open companion")
-        SummaryLine(label = "Check-in", value = summary.checkInStatus ?: "pending")
+        SummaryLine(label = "Mood", value = quietTodayValue(summary.mood, fallback = "open companion"))
+        SummaryLine(label = "Quest", value = quietTodayValue(summary.currentQuest, fallback = "open companion"))
+        SummaryLine(label = "Check-in", value = quietTodayValue(summary.checkInStatus, fallback = "pending"))
     }
 }
 
@@ -56,6 +56,18 @@ private fun SummaryLine(label: String, value: String) {
         style = MaterialTheme.typography.bodyLarge,
         color = Color(0xFF1F2937),
     )
+}
+
+private fun quietTodayValue(value: String?, fallback: String): String {
+    val cleaned = value
+        ?.filterNot { character ->
+            val type = Character.getType(character)
+            type == Character.OTHER_SYMBOL.toInt() || type == Character.SURROGATE.toInt()
+        }
+        ?.replace(Regex("\\s+"), " ")
+        ?.trim()
+
+    return cleaned?.takeIf(String::isNotBlank) ?: fallback
 }
 
 @Preview(showBackground = true)

@@ -27,13 +27,22 @@ class LauncherIntegrationContractTest {
         assertTrue(screen.contains("companion"))
         assertTrue(screen.contains("settings"))
         assertTrue(screen.contains("MAX_HOME_ALLOWED_APPS = 7"))
+        assertTrue(screen.contains("LauncherMutedActionColor"))
+        assertTrue(screen.contains("LauncherTextAction(text = \"all apps\""))
+        assertTrue(screen.contains("LauncherTextAction(text = \"companion\""))
+        assertTrue(screen.contains("LauncherTextAction(text = \"settings\""))
+        assertTrue(screen.contains("LauncherTextAction(text = \"refresh\""))
 
         assertTrue(dailySurface.contains("SummaryLine(label = \"Mood\""))
         assertTrue(dailySurface.contains("SummaryLine(label = \"Quest\""))
         assertTrue(dailySurface.contains("SummaryLine(label = \"Check-in\""))
+        assertTrue(dailySurface.contains("quietTodayValue"))
+        assertFalse(dailySurface.contains("Card("))
         assertFalse(screen.contains("LauncherFavoritesCard"))
         assertFalse(screen.contains("FavoriteAppShortcut"))
         assertFalse(screen.contains("packageName,"))
+        assertFalse(screen.contains("\u2605"))
+        assertFalse(screen.contains("\u2606"))
     }
 
     @Test
@@ -46,11 +55,14 @@ class LauncherIntegrationContractTest {
         assertTrue(drawer.contains("searchLauncherApps(apps, query)"))
         assertTrue(repository.contains("app.label.contains(cleaned, ignoreCase = true)"))
         assertTrue(repository.contains("app.packageName.contains(cleaned, ignoreCase = true)"))
-        assertTrue(drawer.contains("\"hide\" else \"allow\""))
+        assertTrue(drawer.contains("LauncherTextAction(text = \"close\""))
+        assertTrue(drawer.contains("text = if (isAllowed) \"hide\" else \"allow\""))
         assertTrue(drawer.contains(".weight(1f)"))
-        assertFalse(drawer.contains("Text(\"★\")"))
-        assertFalse(drawer.contains("Text(\"☆\")"))
+        assertFalse(drawer.contains("TextButton("))
+        assertFalse(drawer.contains("\u2605"))
+        assertFalse(drawer.contains("\u2606"))
         assertFalse(drawer.contains("text = app.packageName"))
+        assertFalse(drawer.contains("package name"))
     }
 
     @Test
@@ -59,8 +71,8 @@ class LauncherIntegrationContractTest {
         val activity = source("app/src/main/java/com/transcendiverse/digitaltwin/launcher/LauncherActivity.kt")
         val drawer = source("app/src/main/java/com/transcendiverse/digitaltwin/launcher/LauncherAppDrawer.kt")
 
-        assertTrue(screen.contains("TextButton(onClick = onOpenCompanion)"))
-        assertTrue(screen.contains("TextButton(onClick = onOpenSettings)"))
+        assertTrue(screen.contains("LauncherTextAction(text = \"companion\", onClick = onOpenCompanion)"))
+        assertTrue(screen.contains("LauncherTextAction(text = \"settings\", onClick = onOpenSettings)"))
         assertFalse(screen.contains("verticalScroll"))
         assertFalse(screen.contains("rememberScrollState"))
         assertFalse(drawer.contains("verticalScroll"))

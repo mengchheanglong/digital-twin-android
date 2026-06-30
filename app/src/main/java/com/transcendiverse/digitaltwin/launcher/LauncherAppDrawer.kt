@@ -12,9 +12,9 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -104,9 +104,7 @@ private fun DrawerHeader(
                     color = Color(0xFF6B7280),
                 )
             }
-            TextButton(onClick = onClose) {
-                Text("close")
-            }
+            LauncherTextAction(text = "close", onClick = onClose)
         }
         OutlinedTextField(
             value = query,
@@ -114,6 +112,13 @@ private fun DrawerHeader(
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
             label = { Text("search") },
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = Color(0xFF4B5563),
+                unfocusedBorderColor = Color(0xFFD1D5DB),
+                focusedLabelColor = Color(0xFF4B5563),
+                unfocusedLabelColor = Color(0xFF6B7280),
+                cursorColor = Color(0xFF374151),
+            ),
         )
     }
 }
@@ -132,11 +137,7 @@ private fun EmptyDrawerState(query: String) {
             color = Color(0xFF1F2937),
         )
         Text(
-            text = if (query.isBlank()) {
-                "launchable apps will appear here"
-            } else {
-                "try a shorter app or package name"
-            },
+            text = if (query.isBlank()) "launchable apps will appear here" else "try a shorter app name",
             style = MaterialTheme.typography.bodyMedium,
             color = Color(0xFF6B7280),
         )
@@ -163,9 +164,10 @@ private fun LauncherAppRow(
             style = MaterialTheme.typography.bodyLarge,
             color = Color(0xFF1F2937),
         )
-        TextButton(onClick = { onToggleAllowed(app) }) {
-            Text(if (isAllowed) "hide" else "allow")
-        }
+        LauncherTextAction(
+            text = if (isAllowed) "hide" else "allow",
+            onClick = { onToggleAllowed(app) },
+        )
     }
     HorizontalDivider(color = Color(0xFFE5E7EB))
 }
