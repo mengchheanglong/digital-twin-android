@@ -32,10 +32,12 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.transcendiverse.digitaltwin.data.FakeTodayRepository
+import com.transcendiverse.digitaltwin.data.InMemoryTodayCacheStore
 import com.transcendiverse.digitaltwin.data.InMemoryTodaySettingsStore
 import com.transcendiverse.digitaltwin.data.LoginRepository
 import com.transcendiverse.digitaltwin.data.NetworkTodayRepository
 import com.transcendiverse.digitaltwin.data.NetworkLoginRepository
+import com.transcendiverse.digitaltwin.data.TodayCacheStore
 import com.transcendiverse.digitaltwin.data.TodayRepository
 import com.transcendiverse.digitaltwin.data.TodaySettings
 import com.transcendiverse.digitaltwin.data.TodaySettingsStore
@@ -45,24 +47,33 @@ import kotlinx.coroutines.launch
 @Composable
 fun TodayScreen(
     settingsStore: TodaySettingsStore,
+    cacheStore: TodayCacheStore = InMemoryTodayCacheStore(),
     fakeRepository: TodayRepository = FakeTodayRepository(),
     loginRepository: LoginRepository = NetworkLoginRepository(),
     networkRepositoryFactory: (String, String) -> TodayRepository = { baseUrl, token ->
         NetworkTodayRepository(baseUrl = baseUrl, token = token)
     },
+    onTodayCacheUpdated: suspend () -> Unit = {},
 ) {
     var savedSettings by remember { mutableStateOf(settingsStore.load()) }
+    val cachedToday = remember { cacheStore.load() }
     var baseUrl by remember { mutableStateOf(savedSettings.baseUrl) }
     var email by remember { mutableStateOf(savedSettings.lastUserEmail) }
     var password by remember { mutableStateOf("") }
-    var today by remember { mutableStateOf<MobileToday?>(null) }
+    var today by remember { mutableStateOf<MobileToday?>(cachedToday?.today) }
     var status by remember {
-        mutableStateOf(if (savedSettings.hasCredentials()) "Loading" else "Fixture mode")
+        mutableStateOf(
+            when {
+                cachedToday != null -> "Cached"
+                savedSettings.hasCredentials() -> "Loading"
+                else -> "Fixture mode"
+            },
+        )
     }
     val scope = rememberCoroutineScope()
 
     suspend fun loadToday(settings: TodaySettings, loadedStatus: String? = null) {
-        status = "Loading"
+        status = if (today == null) "Loading" else "Cached"
         val repository = if (settings.hasCredentials()) {
             networkRepositoryFactory(settings.baseUrl, settings.token)
         } else {
@@ -70,11 +81,15 @@ fun TodayScreen(
         }
 
         try {
-            today = repository.getToday()
+            val loadedToday = repository.getToday()
+            today = loadedToday
+            cacheStore.save(loadedToday)
+            onTodayCacheUpdated()
             status = loadedStatus ?: if (settings.hasCredentials()) "Loaded" else "Fixture mode"
         } catch (error: Exception) {
-            today = null
-            status = "Error: ${error.message ?: "Unable to load Today"}"
+            val cached = cacheStore.load()
+            today = cached?.today
+            status = "Refresh failed: ${error.message ?: "Unable to load Today"}"
         }
     }
 

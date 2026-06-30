@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">Digital Twin</string>
+    <string name="today_widget_description">Digital Twin Today widget</string>
+</resources>
