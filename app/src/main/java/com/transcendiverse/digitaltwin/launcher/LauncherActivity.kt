@@ -1,5 +1,6 @@
 package com.transcendiverse.digitaltwin.launcher
 
+import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.provider.Settings
@@ -74,9 +75,13 @@ class LauncherActivity : ComponentActivity() {
                     startActivity(Intent(Settings.ACTION_SETTINGS))
                 },
                 onOpenCompanion = {
-                    startActivity(Intent(this, MainActivity::class.java))
+                    startActivity(companionTaskIntent(this))
                 },
             )
         }
     }
 }
+
+private fun companionTaskIntent(context: Context): Intent =
+    Intent(context, MainActivity::class.java)
+        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)

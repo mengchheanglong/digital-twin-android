@@ -17,6 +17,8 @@
         <activity
             android:name=".launcher.LauncherActivity"
             android:exported="true"
+            android:launchMode="singleTask"
+            android:taskAffinity="${applicationId}.home"
             android:theme="@style/AppTheme">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -27,6 +29,7 @@
         <activity
             android:name=".MainActivity"
             android:exported="true"
+            android:taskAffinity="${applicationId}.companion"
             android:theme="@style/AppTheme">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

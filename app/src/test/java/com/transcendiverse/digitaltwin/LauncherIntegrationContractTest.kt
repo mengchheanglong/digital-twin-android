@@ -84,6 +84,15 @@ class LauncherIntegrationContractTest {
     }
 
     @Test
+    fun companionLaunchUsesSeparateTaskIntentFromHomeSurface() {
+        val activity = source("app/src/main/java/com/transcendiverse/digitaltwin/launcher/LauncherActivity.kt")
+
+        assertTrue(activity.contains("startActivity(companionTaskIntent(this))"))
+        assertTrue(activity.contains("Intent(context, MainActivity::class.java)"))
+        assertTrue(activity.contains(".addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)"))
+    }
+
+    @Test
     fun manifestDeclaresLauncherAppVisibilityQuery() {
         val manifest = source("app/src/main/AndroidManifest.xml")
 
