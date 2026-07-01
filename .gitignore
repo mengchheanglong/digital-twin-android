@@ -5,3 +5,13 @@ app/build/
 local.properties
 *.iml
 .idea/
+
+# Local Hermes / agent artifacts
+.hermes/
+project-plan/
+
+# Local Android/runtime exports
+*.apk
+*.aab
+*.hprof
+*.log

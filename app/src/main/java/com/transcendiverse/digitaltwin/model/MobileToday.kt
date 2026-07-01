@@ -76,7 +76,7 @@ data class MobileNextAction(
 data class MobileInsight(
     val trend: String,
     val topInterest: String,
-    val productivityScore: Int,
+    val productivityScore: Double,
     val entertainmentRatio: Double,
     val reflection: String,
 )

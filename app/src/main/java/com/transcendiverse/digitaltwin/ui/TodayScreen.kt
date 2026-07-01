@@ -756,7 +756,11 @@ private fun QuestCard(
 @Composable
 private fun InsightCard(today: MobileToday) {
     InfoCard(title = "Reflection") {
-        Text(text = today.insight.reflection, style = MaterialTheme.typography.bodyLarge)
+        Text(
+            text = today.insight.reflection,
+            style = MaterialTheme.typography.bodyMedium,
+            color = CompanionInk,
+        )
         Spacer(modifier = Modifier.height(8.dp))
         Text(
             text = "Context: ${today.insight.trend} trend - ${today.insight.topInterest} focus",

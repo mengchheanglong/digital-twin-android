@@ -56,4 +56,66 @@ class MobileTodayModelTest {
             assertFalse("Fixture must not contain $field", lowerFixture.contains(field.lowercase()))
         }
     }
+
+    @Test
+    fun liveBackendShapeAllowsDecimalProductivityScore() {
+        val payload =
+            """
+            {
+              "success": true,
+              "today": {
+                "version": "mobile-today.v0",
+                "generatedAt": "2026-07-01T02:16:25.460Z",
+                "dayKey": "2026-07-01",
+                "user": {
+                  "name": "Kaze",
+                  "level": 3,
+                  "currentXP": 131,
+                  "requiredXP": 150,
+                  "streak": 3,
+                  "mood": { "emoji": "🤩", "label": "Excellent" }
+                },
+                "checkIn": {
+                  "completedToday": true,
+                  "score": 20,
+                  "dimensions": {
+                    "energy": 4,
+                    "focus": 4,
+                    "stressControl": 4,
+                    "socialConnection": 4,
+                    "optimism": 4
+                  }
+                },
+                "quest": {
+                  "current": null,
+                  "nextAction": {
+                    "label": "Reflect",
+                    "href": "/dashboard/chat",
+                    "reason": "Reflect on today and choose your next focused action."
+                  }
+                },
+                "insight": {
+                  "trend": "stable",
+                  "topInterest": "Daily",
+                  "productivityScore": 67.9,
+                  "entertainmentRatio": 0,
+                  "reflection": "No reflection yet. Reflect this evening."
+                },
+                "launcher": {
+                  "primaryLabel": "Reflect",
+                  "primaryHref": "/dashboard/chat",
+                  "secondaryLabel": "Create quest",
+                  "secondaryHref": "/dashboard/quest"
+                }
+              }
+            }
+            """.trimIndent()
+
+        val response = json.decodeFromString<MobileTodayResponse>(payload)
+
+        assertTrue(response.success)
+        assertEquals("Kaze", response.today.user.name)
+        assertEquals(67.9, response.today.insight.productivityScore, 0.0)
+        assertEquals("Reflect", response.today.launcher.primaryLabel)
+    }
 }
