@@ -7,6 +7,7 @@ import androidx.compose.ui.unit.dp
 import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
 import androidx.glance.action.ActionParameters
+import androidx.glance.background
 import androidx.glance.action.actionStartActivity
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
@@ -61,25 +62,32 @@ class RefreshTodayActionCallback : ActionCallback {
     }
 }
 
+private val WidgetSurfaceColor = ColorProvider(Color(0xFF111827))
+private val WidgetTitleColor = ColorProvider(Color(0xFFF8FAFC))
+private val WidgetBodyColor = ColorProvider(Color(0xFFE5E7EB))
+private val WidgetMutedColor = ColorProvider(Color(0xFFCBD5E1))
+private val WidgetActionColor = ColorProvider(Color(0xFF5EEAD4))
+
 @Composable
 private fun TodayWidgetContent(summary: TodayWidgetSummary) {
     Column(
         modifier = GlanceModifier
             .fillMaxSize()
+            .background(WidgetSurfaceColor)
             .clickable(actionStartActivity<MainActivity>())
             .padding(14.dp),
     ) {
         Text(
             text = summary.title,
             style = TextStyle(
-                color = ColorProvider(Color(0xFF0F172A)),
+                color = WidgetTitleColor,
                 fontWeight = FontWeight.Bold,
             ),
         )
         if (summary.emptyMessage != null) {
             Text(
                 text = summary.emptyMessage,
-                style = TextStyle(color = ColorProvider(Color(0xFF475569))),
+                style = TextStyle(color = WidgetBodyColor),
             )
         } else {
             WidgetLine(summary.mood)
@@ -92,7 +100,7 @@ private fun TodayWidgetContent(summary: TodayWidgetSummary) {
             text = summary.refreshLabel,
             modifier = GlanceModifier.clickable(actionRunCallback<RefreshTodayActionCallback>()),
             style = TextStyle(
-                color = ColorProvider(Color(0xFF0F766E)),
+                color = WidgetActionColor,
                 fontWeight = FontWeight.Bold,
             ),
         )
@@ -105,7 +113,7 @@ private fun WidgetLine(text: String?, muted: Boolean = false) {
         Text(
             text = text,
             style = TextStyle(
-                color = ColorProvider(Color(if (muted) 0xFF64748B else 0xFF334155)),
+                color = if (muted) WidgetMutedColor else WidgetBodyColor,
             ),
         )
     }
