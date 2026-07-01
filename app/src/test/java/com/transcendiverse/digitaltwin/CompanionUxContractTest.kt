@@ -11,17 +11,20 @@ class CompanionUxContractTest {
         val screen = source("app/src/main/java/com/transcendiverse/digitaltwin/ui/TodayScreen.kt")
 
         assertTrue(screen.contains("DailyHero"))
-        assertTrue(screen.contains("PrimaryActionCard"))
+        assertTrue(screen.contains("TodayNextStepCard"))
+        assertTrue(screen.contains("QuickCheckInCard"))
         assertTrue(screen.contains("recommendedTodayAction(today)"))
         assertTrue(screen.contains("TodayVitalsRow"))
         assertTrue(screen.contains("ConnectionPanel"))
         assertTrue(screen.contains("Connection settings"))
+        assertTrue(screen.contains("Start with a 30-second check-in."))
         assertTrue(screen.contains("CompanionBackground"))
         assertTrue(screen.contains("CompanionPrimary"))
 
         assertFalse(screen.contains("StatusCards"))
         assertFalse(screen.contains("MetricCard("))
         assertFalse(screen.contains("SettingsPanel"))
+        assertFalse(screen.contains("LauncherActions"))
     }
 
     @Test
@@ -36,6 +39,7 @@ class CompanionUxContractTest {
 
         assertTrue(screen.contains("today.quest.nextAction.label"))
         assertTrue(screen.contains("today.quest.nextAction.reason"))
+        assertTrue(screen.contains("After check-in: continue one small step."))
         assertTrue(screen.contains("Backend base URL"))
         assertTrue(screen.contains("PasswordVisualTransformation"))
     }

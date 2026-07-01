@@ -185,43 +185,42 @@ fun TodayScreen(
             ) {
                 today?.let { loadedToday ->
                     DailyHero(loadedToday)
-                    PrimaryActionCard(
+                    TodayNextStepCard(
                         today = loadedToday,
                         signedIn = savedSettings.hasCredentials(),
                     )
-                    if (savedSettings.hasCredentials()) {
-                        QuickCheckInCard(
-                            today = loadedToday,
-                            submitting = checkInSubmitting,
-                            onSubmit = { ratings ->
-                                val validationError = validateQuickCheckInRatings(ratings)
-                                if (validationError != null) {
-                                    status = "Check-in failed: $validationError"
-                                    return@QuickCheckInCard
-                                }
-
-                                scope.launch {
-                                    checkInSubmitting = true
-                                    try {
-                                        val result = checkInRepositoryFactory(
-                                            savedSettings.baseUrl,
-                                            savedSettings.token,
-                                        ).submitDaily(ratings)
-                                        val successStatus = "Check-in submitted: ${result.percentage}%"
-                                        val refreshed = loadToday(savedSettings, loadedStatus = successStatus)
-                                        if (!refreshed) {
-                                            status = "$successStatus - refresh failed; cached Today kept"
-                                        }
-                                        onEnqueueBackgroundSync()
-                            } catch (error: Exception) {
-                                status = "Check-in failed: ${safeStatusErrorMessage(error, "Unable to submit check-in")}"
-                            } finally {
-                                checkInSubmitting = false
+                    QuickCheckInCard(
+                        today = loadedToday,
+                        signedIn = savedSettings.hasCredentials(),
+                        submitting = checkInSubmitting,
+                        onSubmit = { ratings ->
+                            val validationError = validateQuickCheckInRatings(ratings)
+                            if (validationError != null) {
+                                status = "Check-in failed: $validationError"
+                                return@QuickCheckInCard
                             }
+
+                            scope.launch {
+                                checkInSubmitting = true
+                                try {
+                                    val result = checkInRepositoryFactory(
+                                        savedSettings.baseUrl,
+                                        savedSettings.token,
+                                    ).submitDaily(ratings)
+                                    val successStatus = "Check-in submitted: ${result.percentage}%"
+                                    val refreshed = loadToday(savedSettings, loadedStatus = successStatus)
+                                    if (!refreshed) {
+                                        status = "$successStatus - refresh failed; cached Today kept"
+                                    }
+                                    onEnqueueBackgroundSync()
+                                } catch (error: Exception) {
+                                    status = "Check-in failed: ${safeStatusErrorMessage(error, "Unable to submit check-in")}"
+                                } finally {
+                                    checkInSubmitting = false
                                 }
-                            },
-                        )
-                    }
+                            }
+                        },
+                    )
                     QuestCard(
                         today = loadedToday,
                         activeQuest = activeQuest.takeIf { savedSettings.hasCredentials() },
@@ -247,7 +246,6 @@ fun TodayScreen(
                         },
                     )
                     InsightCard(loadedToday)
-                    LauncherActions(loadedToday)
                 } ?: LoadingState(status)
                 ConnectionPanel(
                     baseUrl = baseUrl,
@@ -401,19 +399,26 @@ private fun SoftChip(label: String, modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun PrimaryActionCard(
+private fun TodayNextStepCard(
     today: MobileToday,
     signedIn: Boolean,
 ) {
     val action = recommendedTodayAction(today)
+    val headline = when (action.label) {
+        "Check in" -> "Start with a 30-second check-in."
+        "Continue quest" -> "Continue one small quest step."
+        else -> "Close the loop with a short reflection."
+    }
     val detail = when (action.label) {
-        "Check in" -> if (signedIn) {
-            "Start with a quick read on energy, focus, and stress."
-        } else {
-            "Sign in from Connection settings to save today's check-in."
-        }
+        "Check in" -> "Pick the closest preset. Adjust only if needed."
         "Continue quest" -> today.quest.current?.goal ?: "Pick up where you left off."
-        else -> "Use the reflection below to close the loop for today."
+        else -> "Use the reflection below, then come back tomorrow."
+    }
+    val after = when {
+        action.label == "Check in" && signedIn -> "Save it, then continue one quest."
+        action.label == "Check in" -> "Preview it here. Sign in only when you want to save."
+        action.label == "Continue quest" -> "Keep the scope small."
+        else -> "One useful sentence is enough."
     }
 
     Card(
@@ -427,12 +432,12 @@ private fun PrimaryActionCard(
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Text(
-                text = "Now",
+                text = "Next step",
                 style = MaterialTheme.typography.labelLarge,
                 color = Color.White.copy(alpha = 0.78f),
             )
             Text(
-                text = action.label,
+                text = headline,
                 style = MaterialTheme.typography.headlineSmall,
                 color = Color.White,
                 fontWeight = FontWeight.SemiBold,
@@ -442,6 +447,11 @@ private fun PrimaryActionCard(
                 style = MaterialTheme.typography.bodyMedium,
                 color = Color.White.copy(alpha = 0.88f),
             )
+            Text(
+                text = after,
+                style = MaterialTheme.typography.bodyMedium,
+                color = Color.White.copy(alpha = 0.78f),
+            )
         }
     }
 }
@@ -449,6 +459,7 @@ private fun PrimaryActionCard(
 @Composable
 private fun QuickCheckInCard(
     today: MobileToday,
+    signedIn: Boolean,
     submitting: Boolean,
     onSubmit: (List<Int>) -> Unit,
 ) {
@@ -467,6 +478,16 @@ private fun QuickCheckInCard(
     var ratings by remember(today.dayKey) { mutableStateOf(checkInPresetRatings(CheckInPreset.OKAY)) }
 
     InfoCard(title = "Daily check-in") {
+        Text(
+            text = if (signedIn) {
+                "Pick a preset, then tune the five ratings."
+            } else {
+                "Preview mode: pick a preset and tune the ratings. Sign in from Connection settings to save."
+            },
+            style = MaterialTheme.typography.bodyMedium,
+            color = CompanionSecondary,
+        )
+        Spacer(modifier = Modifier.height(4.dp))
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -494,13 +515,21 @@ private fun QuickCheckInCard(
             )
         }
         Spacer(modifier = Modifier.height(8.dp))
-        Button(
-            onClick = { onSubmit(ratings) },
-            modifier = Modifier.fillMaxWidth(),
-            enabled = !submitting,
-            colors = ButtonDefaults.buttonColors(containerColor = CompanionPrimary, contentColor = Color.White),
-        ) {
-            Text(if (submitting) "Submitting" else "Submit check-in")
+        if (signedIn) {
+            Button(
+                onClick = { onSubmit(ratings) },
+                modifier = Modifier.fillMaxWidth(),
+                enabled = !submitting,
+                colors = ButtonDefaults.buttonColors(containerColor = CompanionPrimary, contentColor = Color.White),
+            ) {
+                Text(if (submitting) "Submitting" else "Save check-in")
+            }
+        } else {
+            Text(
+                text = "This is a local preview. Nothing is sent or saved until you sign in.",
+                style = MaterialTheme.typography.bodySmall,
+                color = CompanionMuted,
+            )
         }
     }
 }
@@ -556,7 +585,9 @@ private fun QuestCard(
     onToggleComplete: () -> Unit,
 ) {
     val quest = today.quest.current
-    InfoCard(title = "Quest") {
+    val checkInIsPrimary = !today.checkIn.completedToday && recommendedTodayAction(today).label == "Check in"
+
+    InfoCard(title = "One small quest step") {
         Text(
             text = quest?.goal ?: "No active quest",
             style = MaterialTheme.typography.titleMedium,
@@ -570,7 +601,7 @@ private fun QuestCard(
                 "${quest.progress}% complete - ${quest.duration}"
             },
             style = MaterialTheme.typography.bodyMedium,
-            color = Color(0xFF475569),
+            color = CompanionSecondary,
         )
         if (quest != null && activeQuest != null) {
             Spacer(modifier = Modifier.height(8.dp))
@@ -607,17 +638,25 @@ private fun QuestCard(
             }
         }
         Spacer(modifier = Modifier.height(10.dp))
-        Text(
-            text = today.quest.nextAction.label,
-            style = MaterialTheme.typography.labelLarge,
-            color = Color(0xFF0F766E),
-            fontWeight = FontWeight.SemiBold,
-        )
-        Text(
-            text = today.quest.nextAction.reason,
-            style = MaterialTheme.typography.bodyMedium,
-            color = Color(0xFF475569),
-        )
+        if (checkInIsPrimary) {
+            Text(
+                text = "After check-in: continue one small step.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = CompanionSecondary,
+            )
+        } else {
+            Text(
+                text = today.quest.nextAction.label,
+                style = MaterialTheme.typography.labelLarge,
+                color = CompanionSuccess,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Text(
+                text = today.quest.nextAction.reason,
+                style = MaterialTheme.typography.bodyMedium,
+                color = CompanionSecondary,
+            )
+        }
     }
 }
 
@@ -627,34 +666,10 @@ private fun InsightCard(today: MobileToday) {
         Text(text = today.insight.reflection, style = MaterialTheme.typography.bodyLarge)
         Spacer(modifier = Modifier.height(8.dp))
         Text(
-            text = "Trend: ${today.insight.trend} - Focus: ${today.insight.topInterest}",
-            style = MaterialTheme.typography.bodyMedium,
-            color = Color(0xFF475569),
+            text = "Context: ${today.insight.trend} trend - ${today.insight.topInterest} focus",
+            style = MaterialTheme.typography.bodySmall,
+            color = CompanionMuted,
         )
-    }
-}
-
-@Composable
-private fun LauncherActions(today: MobileToday) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        OutlinedButton(
-            onClick = {},
-            modifier = Modifier.weight(1f),
-            border = BorderStroke(1.dp, CompanionBorder),
-            colors = ButtonDefaults.outlinedButtonColors(contentColor = CompanionInk),
-        ) {
-            Text(today.launcher.primaryLabel)
-        }
-        TextButton(
-            onClick = {},
-            modifier = Modifier.weight(1f),
-            colors = ButtonDefaults.textButtonColors(contentColor = CompanionSecondary),
-        ) {
-            Text(today.launcher.secondaryLabel)
-        }
     }
 }
 
