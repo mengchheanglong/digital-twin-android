@@ -16,6 +16,12 @@ class TodayWidgetVisualContractTest {
         assertTrue(widget.contains("WidgetBodyColor = ColorProvider(Color(0xFFE5E7EB))"))
         assertTrue(widget.contains("WidgetMutedColor = ColorProvider(Color(0xFFCBD5E1))"))
         assertTrue(widget.contains("WidgetActionColor = ColorProvider(Color(0xFF5EEAD4))"))
+        listOf("Mood", "Streak", "Quest", "Next", "State").forEach { label ->
+            assertTrue(widget.contains("label = \"$label\""))
+        }
+        assertTrue(widget.contains("WidgetRefreshText(summary)"))
+        assertTrue(widget.contains("summary.cacheLabel"))
+        assertTrue(widget.contains("summary.refreshLabel.replaceFirstChar(Char::lowercase)"))
         assertFalse(widget.contains("ColorProvider(Color(if (muted) 0xFF64748B else 0xFF334155))"))
     }
 

@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
 import androidx.glance.action.ActionParameters
@@ -75,46 +76,74 @@ private fun TodayWidgetContent(summary: TodayWidgetSummary) {
             .fillMaxSize()
             .background(WidgetSurfaceColor)
             .clickable(actionStartActivity<MainActivity>())
-            .padding(14.dp),
+            .padding(10.dp),
     ) {
         Text(
             text = summary.title,
             style = TextStyle(
                 color = WidgetTitleColor,
-                fontWeight = FontWeight.Bold,
+                fontWeight = FontWeight.Medium,
+                fontSize = 15.sp,
             ),
         )
+
         if (summary.emptyMessage != null) {
-            Text(
+            WidgetTextLine(
+                label = "State",
                 text = summary.emptyMessage,
-                style = TextStyle(color = WidgetBodyColor),
+                muted = true,
             )
         } else {
-            WidgetLine(summary.mood)
-            WidgetLine(summary.streak)
-            WidgetLine(summary.quest)
-            WidgetLine(summary.nextAction)
-            WidgetLine(summary.cacheLabel, muted = true)
+            WidgetTextLine(
+                label = "Mood",
+                text = summary.mood,
+            )
+            WidgetTextLine(
+                label = "Streak",
+                text = summary.streak,
+            )
+            WidgetTextLine(
+                label = "Quest",
+                text = summary.quest,
+            )
+            WidgetTextLine(
+                label = "Next",
+                text = summary.nextAction,
+            )
         }
+
         Text(
-            text = summary.refreshLabel,
-            modifier = GlanceModifier.clickable(actionRunCallback<RefreshTodayActionCallback>()),
+            text = WidgetRefreshText(summary),
+            modifier = GlanceModifier
+                .padding(top = 5.dp)
+                .clickable(actionRunCallback<RefreshTodayActionCallback>()),
             style = TextStyle(
                 color = WidgetActionColor,
                 fontWeight = FontWeight.Bold,
+                fontSize = 13.sp,
             ),
         )
     }
 }
 
 @Composable
-private fun WidgetLine(text: String?, muted: Boolean = false) {
-    if (text != null) {
-        Text(
-            text = text,
-            style = TextStyle(
-                color = if (muted) WidgetMutedColor else WidgetBodyColor,
-            ),
-        )
-    }
+private fun WidgetTextLine(
+    label: String,
+    text: String?,
+    muted: Boolean = false,
+) {
+    if (text == null) return
+
+    Text(
+        text = "$label: $text",
+        modifier = GlanceModifier.padding(top = 3.dp),
+        style = TextStyle(
+            color = if (muted) WidgetMutedColor else WidgetBodyColor,
+            fontSize = 13.sp,
+        ),
+    )
+}
+
+private fun WidgetRefreshText(summary: TodayWidgetSummary): String {
+    return "${summary.cacheLabel} • ${summary.refreshLabel.replaceFirstChar(Char::lowercase)}"
 }

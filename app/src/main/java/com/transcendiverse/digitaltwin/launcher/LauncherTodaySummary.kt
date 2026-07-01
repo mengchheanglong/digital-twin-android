@@ -33,7 +33,7 @@ data class LauncherTodaySummary(
                 return LauncherTodaySummary(
                     title = TITLE,
                     cacheLabel = "No cached Today",
-                    emptyState = "Open the companion app or refresh to load Today.",
+                    emptyState = "No Today snapshot yet. Open companion or refresh to load your latest state.",
                 )
             }
 
@@ -47,10 +47,10 @@ data class LauncherTodaySummary(
 
             return LauncherTodaySummary(
                 title = TITLE,
-                mood = "${today.user.mood.emoji} ${today.user.mood.label}".safeLauncherText("Mood unavailable"),
-                streak = "${today.user.streak} ${if (today.user.streak == 1) "day" else "day"} streak",
+                mood = today.user.mood.label.safeLauncherText("Mood unavailable"),
+                streak = "${today.user.streak}-day streak",
                 checkInStatus = if (today.checkIn.completedToday) {
-                    today.checkIn.score?.let { "Check-in complete: $it" } ?: "Check-in complete"
+                    "Check-in complete"
                 } else {
                     "Check-in pending"
                 },

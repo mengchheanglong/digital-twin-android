@@ -24,7 +24,7 @@ class LauncherTodaySummaryTest {
 
         assertEquals("Digital Twin Today", summary.title)
         assertEquals("No cached Today", summary.cacheLabel)
-        assertEquals("Open the companion app or refresh to load Today.", summary.emptyState)
+        assertEquals("No Today snapshot yet. Open companion or refresh to load your latest state.", summary.emptyState)
         assertNotNull(summary.emptyState)
     }
 
@@ -36,8 +36,8 @@ class LauncherTodaySummaryTest {
         )
 
         assertEquals("Digital Twin Today", summary.title)
-        assertEquals("\uD83C\uDFAF focused", summary.mood)
-        assertEquals("5 day streak", summary.streak)
+        assertEquals("focused", summary.mood)
+        assertEquals("5-day streak", summary.streak)
         assertEquals("Check-in pending", summary.checkInStatus)
         assertEquals("Ship the smallest useful companion", summary.currentQuest)
         assertEquals("Check in from companion", summary.nextAction)
@@ -62,7 +62,7 @@ class LauncherTodaySummaryTest {
             ),
         )
 
-        assertEquals("Check-in complete: 85", summary.checkInStatus)
+        assertEquals("Check-in complete", summary.checkInStatus)
         assertEquals("Check in", summary.nextAction)
     }
 

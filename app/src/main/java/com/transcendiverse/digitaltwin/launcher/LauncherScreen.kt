@@ -173,14 +173,20 @@ private fun LauncherAllowedAppsSection(
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(
-            text = "Allowed",
+            text = "Allowed apps",
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.SemiBold,
             color = Color(0xFF111827),
         )
         if (favoriteApps.isEmpty()) {
             Text(
-                text = "choose allowed apps",
+                text = "No allowed apps yet",
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.Medium,
+                color = Color(0xFF111827),
+            )
+            Text(
+                text = "Open app drawer to pick the apps you want available from home.",
                 modifier = Modifier.clickable(onClick = onOpenAppDrawer),
                 style = MaterialTheme.typography.bodyLarge,
                 color = Color(0xFF6B7280),
@@ -225,7 +231,7 @@ private fun LauncherEscapeActions(
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         onOpenAppDrawer?.let { openAppDrawer ->
-            LauncherTextAction(text = "all apps", onClick = openAppDrawer)
+            LauncherTextAction(text = "app drawer", onClick = openAppDrawer)
         }
         Row(
             modifier = Modifier.fillMaxWidth(),
