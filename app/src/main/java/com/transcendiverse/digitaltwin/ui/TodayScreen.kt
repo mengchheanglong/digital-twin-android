@@ -1,6 +1,7 @@
 package com.transcendiverse.digitaltwin.ui
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -9,6 +10,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -33,6 +36,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -475,6 +479,7 @@ private fun QuickCheckInCard(
         return
     }
 
+    var selectedPreset by remember(today.dayKey) { mutableStateOf<CheckInPreset?>(CheckInPreset.OKAY) }
     var ratings by remember(today.dayKey) { mutableStateOf(checkInPresetRatings(CheckInPreset.OKAY)) }
 
     InfoCard(title = "Daily check-in") {
@@ -493,25 +498,39 @@ private fun QuickCheckInCard(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             CheckInPreset.entries.forEach { preset ->
-                OutlinedButton(
-                    onClick = { ratings = checkInPresetRatings(preset) },
-                    modifier = Modifier.weight(1f),
+                PresetPill(
+                    preset = preset,
+                    selected = selectedPreset == preset,
                     enabled = !submitting,
-                    border = BorderStroke(1.dp, CompanionBorder),
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = CompanionInk),
-                ) {
-                    Text(preset.label)
-                }
+                    modifier = Modifier.weight(1f),
+                    onClick = {
+                        ratings = checkInPresetRatings(preset)
+                        selectedPreset = preset
+                    },
+                )
             }
         }
         Spacer(modifier = Modifier.height(6.dp))
+        Text(
+            text = checkInShapeSummary(ratings, selectedPreset),
+            style = MaterialTheme.typography.bodySmall,
+            color = CompanionSecondary,
+            fontWeight = FontWeight.Medium,
+        )
+        Spacer(modifier = Modifier.height(2.dp))
         CHECK_IN_DIMENSIONS.forEachIndexed { index, label ->
-            RatingRow(
+            RatingControlRow(
                 label = label,
                 rating = ratings[index],
                 enabled = !submitting,
-                onDecrease = { ratings = updateCheckInRating(ratings, index, -1) },
-                onIncrease = { ratings = updateCheckInRating(ratings, index, 1) },
+                onDecrease = {
+                    ratings = updateCheckInRating(ratings, index, -1)
+                    selectedPreset = checkInPresetForRatings(ratings)
+                },
+                onIncrease = {
+                    ratings = updateCheckInRating(ratings, index, 1)
+                    selectedPreset = checkInPresetForRatings(ratings)
+                },
             )
         }
         Spacer(modifier = Modifier.height(8.dp))
@@ -535,7 +554,38 @@ private fun QuickCheckInCard(
 }
 
 @Composable
-private fun RatingRow(
+private fun PresetPill(
+    preset: CheckInPreset,
+    selected: Boolean,
+    enabled: Boolean,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit,
+) {
+    if (selected) {
+        Button(
+            onClick = onClick,
+            modifier = modifier,
+            enabled = enabled,
+            border = BorderStroke(1.dp, CompanionPrimary),
+            colors = ButtonDefaults.buttonColors(containerColor = CompanionPrimary, contentColor = Color.White),
+        ) {
+            Text(preset.label, fontWeight = FontWeight.SemiBold)
+        }
+    } else {
+        OutlinedButton(
+            onClick = onClick,
+            modifier = modifier,
+            enabled = enabled,
+            border = BorderStroke(1.dp, CompanionBorder),
+            colors = ButtonDefaults.outlinedButtonColors(contentColor = CompanionInk),
+        ) {
+            Text(preset.label)
+        }
+    }
+}
+
+@Composable
+private fun RatingControlRow(
     label: String,
     rating: Int,
     enabled: Boolean,
@@ -551,26 +601,69 @@ private fun RatingRow(
             modifier = Modifier.weight(1f),
             style = MaterialTheme.typography.bodyMedium,
             color = Color(0xFF334155),
+            fontWeight = FontWeight.Medium,
         )
-        TextButton(
-            onClick = onDecrease,
-            enabled = enabled && rating > 1,
-            colors = ButtonDefaults.textButtonColors(contentColor = CompanionPrimary),
+        Surface(
+            shape = RoundedCornerShape(999.dp),
+            color = CompanionChip,
+            border = BorderStroke(1.dp, CompanionBorder),
         ) {
-            Text("-")
+            Row(
+                modifier = Modifier.padding(2.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(2.dp),
+            ) {
+                RatingStepperButton(
+                    label = "-",
+                    enabled = enabled && rating > 1,
+                    onClick = onDecrease,
+                )
+                Box(
+                    modifier = Modifier
+                        .width(34.dp)
+                        .height(36.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text = rating.toString(),
+                        style = MaterialTheme.typography.titleMedium,
+                        color = CompanionInk,
+                        fontWeight = FontWeight.SemiBold,
+                        textAlign = TextAlign.Center,
+                    )
+                }
+                RatingStepperButton(
+                    label = "+",
+                    enabled = enabled && rating < 5,
+                    onClick = onIncrease,
+                )
+            }
         }
+    }
+}
+
+@Composable
+private fun RatingStepperButton(
+    label: String,
+    enabled: Boolean,
+    onClick: () -> Unit,
+) {
+    TextButton(
+        onClick = onClick,
+        modifier = Modifier.size(46.dp),
+        enabled = enabled,
+        shape = RoundedCornerShape(999.dp),
+        colors = ButtonDefaults.textButtonColors(
+            contentColor = CompanionPrimary,
+            disabledContentColor = CompanionMuted,
+        ),
+    ) {
         Text(
-            text = rating.toString(),
+            text = label,
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.SemiBold,
+            textAlign = TextAlign.Center,
         )
-        TextButton(
-            onClick = onIncrease,
-            enabled = enabled && rating < 5,
-            colors = ButtonDefaults.textButtonColors(contentColor = CompanionPrimary),
-        ) {
-            Text("+")
-        }
     }
 }
 
@@ -839,6 +932,43 @@ fun checkInPresetRatings(preset: CheckInPreset): List<Int> = when (preset) {
     CheckInPreset.LOW -> listOf(2, 2, 2, 2, 2)
     CheckInPreset.OKAY -> listOf(3, 3, 3, 3, 3)
     CheckInPreset.STRONG -> listOf(4, 4, 4, 4, 4)
+}
+
+fun checkInPresetForRatings(ratings: List<Int>): CheckInPreset? =
+    CheckInPreset.entries.firstOrNull { preset -> ratings == checkInPresetRatings(preset) }
+
+fun checkInShapeSummary(ratings: List<Int>, selectedPreset: CheckInPreset?): String {
+    if (ratings.isEmpty()) return "Current shape: custom - no ratings yet"
+
+    val preset = selectedPreset ?: checkInPresetForRatings(ratings)
+    val shape = when (preset) {
+        CheckInPreset.LOW -> "low energy"
+        CheckInPreset.OKAY -> "steady baseline"
+        CheckInPreset.STRONG -> "strong day"
+        null -> {
+            val average = ratings.average()
+            when {
+                average < 2.75 -> "lower than usual"
+                average > 3.75 -> "higher than usual"
+                else -> "mixed baseline"
+            }
+        }
+    }
+    val detail = if (ratings.all { it == ratings.first() }) {
+        "all ${ratings.first()}/5"
+    } else {
+        val mostCommon = ratings
+            .groupingBy { it }
+            .eachCount()
+            .maxWithOrNull(compareBy<Map.Entry<Int, Int>> { it.value }.thenBy { it.key })
+        if (mostCommon != null && mostCommon.value >= 3) {
+            "mostly ${mostCommon.key}/5"
+        } else {
+            "mixed ${ratings.minOrNull()}-${ratings.maxOrNull()}/5"
+        }
+    }
+
+    return "Current shape: $shape - $detail"
 }
 
 fun updateCheckInRating(ratings: List<Int>, index: Int, delta: Int): List<Int> =

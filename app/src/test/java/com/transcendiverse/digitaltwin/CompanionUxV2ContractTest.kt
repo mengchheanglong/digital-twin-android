@@ -26,7 +26,7 @@ class CompanionUxV2ContractTest {
         assertTrue(screen.contains("Preview mode: pick a preset and tune the ratings. Sign in from Connection settings to save."))
         assertTrue(screen.contains("This is a local preview. Nothing is sent or saved until you sign in."))
         assertTrue(screen.contains("CheckInPreset.entries.forEach"))
-        assertTrue(screen.contains("RatingRow("))
+        assertTrue(screen.contains("RatingControlRow("))
         assertFalse(screen.contains("Sign in from Connection settings to save today's check-in."))
     }
 
