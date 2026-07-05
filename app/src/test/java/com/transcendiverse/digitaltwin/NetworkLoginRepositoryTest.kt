@@ -104,6 +104,58 @@ class NetworkLoginRepositoryTest {
     }
 
     @Test
+    fun transportErrorTextDoesNotExposeCredentialsOrConnectionDetails() {
+        val repository = NetworkLoginRepository(
+            transport = ThrowingTransport("https://api.example.test user@example.com plain text password"),
+        )
+
+        val error = assertThrowsLogin<LoginNetworkException> {
+            runBlocking {
+                repository.login(
+                    baseUrl = "https://api.example.test",
+                    email = "user@example.com",
+                    password = "plain text password",
+                )
+            }
+        }
+
+        val rendered = error.toString().lowercase()
+        assertTrue(rendered.contains("/api/auth/login"))
+        listOf(
+            "plain text password",
+            "user@example.com",
+            "api.example.test",
+            "https://",
+        ).forEach { forbidden ->
+            assertFalse("Login exception must not contain $forbidden", rendered.contains(forbidden))
+        }
+    }
+
+    @Test
+    fun invalidJsonErrorTextDoesNotExposeRawPayload() {
+        val repository = NetworkLoginRepository(
+            transport = RecordingTransport(TodayHttpResponse(200, """{"token":"secret-token","user":""")),
+        )
+
+        val error = assertThrowsLogin<LoginNetworkException> {
+            runBlocking {
+                repository.login(
+                    baseUrl = "https://api.example.test",
+                    email = "user@example.com",
+                    password = "plain text password",
+                )
+            }
+        }
+
+        val rendered = error.toString().lowercase()
+        assertTrue(rendered.contains("invalid json"))
+        assertFalse(rendered.contains("secret-token"))
+        assertFalse(rendered.contains("user@example.com"))
+        assertFalse(rendered.contains("plain text password"))
+        assertFalse(rendered.contains("{"))
+    }
+
+    @Test
     fun loginUrlTrimsTrailingSlash() {
         assertEquals("https://api.example.test/api/auth/login", buildLoginUrl("https://api.example.test/"))
         assertEquals("https://api.example.test/api/auth/login", buildLoginUrl(" https://api.example.test/// "))
@@ -118,6 +170,14 @@ class NetworkLoginRepositoryTest {
         override fun execute(request: TodayHttpRequest): TodayHttpResponse {
             lastRequest = request
             return response
+        }
+    }
+
+    private class ThrowingTransport(
+        private val message: String,
+    ) : TodayHttpTransport {
+        override fun execute(request: TodayHttpRequest): TodayHttpResponse {
+            throw IllegalStateException(message)
         }
     }
 }

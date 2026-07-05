@@ -86,7 +86,7 @@ class NetworkTodayRepository(
                 transport.execute(request)
             }
         } catch (error: Exception) {
-            throw TodayNetworkException("GET $TODAY_PATH failed: ${error.message}", error)
+            throw TodayNetworkException("GET $TODAY_PATH failed", error)
         }
 
         if (response.statusCode !in 200..299) {
@@ -96,9 +96,9 @@ class NetworkTodayRepository(
         val envelope = try {
             json.decodeFromString<MobileTodayResponse>(response.body)
         } catch (error: SerializationException) {
-            throw TodayNetworkException("GET $TODAY_PATH returned invalid JSON: ${error.message}", error)
+            throw TodayNetworkException("GET $TODAY_PATH returned invalid JSON", error)
         } catch (error: IllegalArgumentException) {
-            throw TodayNetworkException("GET $TODAY_PATH returned invalid JSON: ${error.message}", error)
+            throw TodayNetworkException("GET $TODAY_PATH returned invalid JSON", error)
         }
 
         if (!envelope.success) {

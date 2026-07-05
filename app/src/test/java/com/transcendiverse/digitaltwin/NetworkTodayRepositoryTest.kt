@@ -8,6 +8,7 @@ import com.transcendiverse.digitaltwin.data.TodayHttpTransport
 import com.transcendiverse.digitaltwin.data.TodayNetworkException
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.net.URI
@@ -62,6 +63,50 @@ class NetworkTodayRepositoryTest {
         assertTrue(error.message.orEmpty().contains("/api/mobile/today"))
     }
 
+    @Test
+    fun transportErrorTextDoesNotExposeSecretsOrConnectionDetails() {
+        val repository = NetworkTodayRepository(
+            baseUrl = "https://api.example.test",
+            token = "secret-token",
+            transport = ThrowingTransport("https://api.example.test secret-token alex@example.com password"),
+        )
+
+        val error = assertThrowsCompat<TodayNetworkException> {
+            runBlocking { repository.getToday() }
+        }
+
+        val rendered = error.toString().lowercase()
+        assertTrue(rendered.contains("/api/mobile/today"))
+        listOf(
+            "secret-token",
+            "password",
+            "alex@example.com",
+            "api.example.test",
+            "https://",
+        ).forEach { forbidden ->
+            assertFalse("Today exception must not contain $forbidden", rendered.contains(forbidden))
+        }
+    }
+
+    @Test
+    fun invalidJsonErrorTextDoesNotExposeRawPayload() {
+        val repository = NetworkTodayRepository(
+            baseUrl = "https://api.example.test",
+            token = "secret-token",
+            transport = RecordingTransport(TodayHttpResponse(200, """{"token":"secret-token","today":""")),
+        )
+
+        val error = assertThrowsCompat<TodayNetworkException> {
+            runBlocking { repository.getToday() }
+        }
+
+        val rendered = error.toString().lowercase()
+        assertTrue(rendered.contains("invalid json"))
+        assertFalse(rendered.contains("secret-token"))
+        assertFalse(rendered.contains("api.example.test"))
+        assertFalse(rendered.contains("{"))
+    }
+
     private class RecordingTransport(
         private val response: TodayHttpResponse,
     ) : TodayHttpTransport {
@@ -70,6 +115,14 @@ class NetworkTodayRepositoryTest {
         override fun execute(request: TodayHttpRequest): TodayHttpResponse {
             lastRequest = request
             return response
+        }
+    }
+
+    private class ThrowingTransport(
+        private val message: String,
+    ) : TodayHttpTransport {
+        override fun execute(request: TodayHttpRequest): TodayHttpResponse {
+            throw IllegalStateException(message)
         }
     }
 }

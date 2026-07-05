@@ -51,7 +51,7 @@ class NetworkLoginRepository(
                 transport.execute(request)
             }
         } catch (error: Exception) {
-            throw LoginNetworkException("POST $LOGIN_PATH failed: ${error.message}", error)
+            throw LoginNetworkException("POST $LOGIN_PATH failed", error)
         }
 
         if (response.statusCode !in 200..299) {
@@ -61,9 +61,9 @@ class NetworkLoginRepository(
         val loginResponse = try {
             json.decodeFromString<LoginResponse>(response.body)
         } catch (error: SerializationException) {
-            throw LoginNetworkException("POST $LOGIN_PATH returned invalid JSON: ${error.message}", error)
+            throw LoginNetworkException("POST $LOGIN_PATH returned invalid JSON", error)
         } catch (error: IllegalArgumentException) {
-            throw LoginNetworkException("POST $LOGIN_PATH returned invalid JSON: ${error.message}", error)
+            throw LoginNetworkException("POST $LOGIN_PATH returned invalid JSON", error)
         }
 
         if (loginResponse.token.isBlank()) {

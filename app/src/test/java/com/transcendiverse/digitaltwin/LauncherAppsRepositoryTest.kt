@@ -2,9 +2,13 @@ package com.transcendiverse.digitaltwin
 
 import com.transcendiverse.digitaltwin.launcher.DIGITAL_TWIN_PACKAGE_NAME
 import com.transcendiverse.digitaltwin.launcher.LauncherApp
+import com.transcendiverse.digitaltwin.launcher.displayLabel
 import com.transcendiverse.digitaltwin.launcher.filterSelfPackage
 import com.transcendiverse.digitaltwin.launcher.filterValidLauncherApps
+import com.transcendiverse.digitaltwin.launcher.labelDuplicateProfileApps
+import com.transcendiverse.digitaltwin.launcher.searchLauncherApps
 import com.transcendiverse.digitaltwin.launcher.sortLauncherApps
+import com.transcendiverse.digitaltwin.launcher.stableKey
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
@@ -68,5 +72,29 @@ class LauncherAppsRepositoryTest {
         )
 
         assertEquals(listOf(other), filterSelfPackage(listOf(self, other)))
+    }
+
+    @Test
+    fun duplicateProfileAppsReceiveMainAndCloneLabels() {
+        val mainTelegram = LauncherApp(
+            packageName = "org.telegram.messenger",
+            label = "Telegram",
+            activityName = "org.telegram.ui.LaunchActivity",
+            userSerial = 0,
+            isOwnerProfile = true,
+        )
+        val clonedTelegram = LauncherApp(
+            packageName = "org.telegram.messenger",
+            label = "Telegram",
+            activityName = "org.telegram.ui.LaunchActivity",
+            userSerial = 12,
+            isOwnerProfile = false,
+        )
+
+        val labeled = labelDuplicateProfileApps(listOf(mainTelegram, clonedTelegram))
+
+        assertEquals(listOf("Telegram · Main", "Telegram · Clone"), labeled.map { it.displayLabel })
+        assertEquals(2, labeled.map { it.stableKey }.toSet().size)
+        assertEquals(listOf("Telegram · Clone"), searchLauncherApps(labeled, "clone").map { it.displayLabel })
     }
 }

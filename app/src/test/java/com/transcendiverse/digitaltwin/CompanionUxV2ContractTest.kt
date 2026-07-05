@@ -11,9 +11,9 @@ class CompanionUxV2ContractTest {
         val screen = source("app/src/main/java/com/transcendiverse/digitaltwin/ui/TodayScreen.kt")
 
         assertTrue(screen.contains("TodayNextStepCard"))
-        assertTrue(screen.contains("text = \"Next step\""))
-        assertTrue(screen.contains("Start with a 30-second check-in."))
-        assertTrue(screen.contains("Pick the closest preset. Adjust only if needed."))
+        assertTrue(screen.contains("CommandMicroLabel(text = \"CURRENT PROTOCOL\")"))
+        assertTrue(screen.contains("Preview only. Sign in from Me when you want to save."))
+        assertTrue(screen.contains("Pick the baseline that fits right now."))
         assertTrue(screen.contains("QuickCheckInCard("))
         assertTrue(screen.contains("signedIn = savedSettings.hasCredentials()"))
         assertTrue(screen.contains("Text(if (submitting) \"Submitting\" else \"Save check-in\")"))
@@ -23,8 +23,8 @@ class CompanionUxV2ContractTest {
     fun fixtureModeHasLocalCheckInPreviewWithoutFakeSubmit() {
         val screen = source("app/src/main/java/com/transcendiverse/digitaltwin/ui/TodayScreen.kt")
 
-        assertTrue(screen.contains("Preview mode: pick a preset and tune the ratings. Sign in from Connection settings to save."))
-        assertTrue(screen.contains("This is a local preview. Nothing is sent or saved until you sign in."))
+        assertTrue(screen.contains("Preview only. Sign in from Me to save."))
+        assertTrue(screen.contains("This is a local preview. Sign in from Me to save check-ins."))
         assertTrue(screen.contains("CheckInPreset.entries.forEach"))
         assertTrue(screen.contains("RatingControlRow("))
         assertFalse(screen.contains("Sign in from Connection settings to save today's check-in."))
@@ -38,8 +38,8 @@ class CompanionUxV2ContractTest {
         assertFalse(screen.contains("today.launcher.primaryLabel"))
         assertFalse(screen.contains("today.launcher.secondaryLabel"))
         assertFalse(screen.contains("onClick = {}"))
-        assertTrue(screen.contains("After check-in: continue one small step."))
-        assertTrue(screen.contains("checkInIsPrimary"))
+        assertTrue(screen.contains("today.quest.nextAction.reason"))
+        assertTrue(screen.contains("CommandMicroLabel(text = \"CURRENT PROTOCOL\")"))
     }
 
     @Test

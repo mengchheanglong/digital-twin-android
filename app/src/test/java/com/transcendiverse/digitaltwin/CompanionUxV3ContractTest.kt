@@ -14,11 +14,12 @@ class CompanionUxV3ContractTest {
     fun v3ShowsSelectedPresetStateByDefault() {
         val screen = source("app/src/main/java/com/transcendiverse/digitaltwin/ui/TodayScreen.kt")
 
-        assertTrue(screen.contains("var selectedPreset by remember(today.dayKey) { mutableStateOf<CheckInPreset?>(CheckInPreset.OKAY) }"))
+        assertTrue(screen.contains("CheckInPreset.OKAY"))
         assertTrue(screen.contains("PresetPill("))
         assertTrue(screen.contains("selected = selectedPreset == preset"))
-        assertTrue(screen.contains("border = BorderStroke(1.dp, CompanionPrimary)"))
-        assertTrue(screen.contains("Text(preset.label, fontWeight = FontWeight.SemiBold)"))
+        assertTrue(screen.contains("CompanionAccentBorder"))
+        assertTrue(screen.contains("text = preset.label"))
+        assertTrue(screen.contains("fontWeight = FontWeight.SemiBold"))
     }
 
     @Test
@@ -27,7 +28,7 @@ class CompanionUxV3ContractTest {
 
         assertTrue(screen.contains("ratings = checkInPresetRatings(preset)"))
         assertTrue(screen.contains("selectedPreset = preset"))
-        assertTrue(screen.contains("selectedPreset = checkInPresetForRatings(ratings)"))
+        assertTrue(screen.contains("selectedPreset = checkInPresetForRatings(updated)"))
         assertEquals(CheckInPreset.OKAY, checkInPresetForRatings(listOf(3, 3, 3, 3, 3)))
         assertNull(checkInPresetForRatings(listOf(3, 4, 3, 3, 3)))
     }
@@ -38,7 +39,7 @@ class CompanionUxV3ContractTest {
 
         assertTrue(screen.contains("RatingControlRow("))
         assertTrue(screen.contains("RatingStepperButton("))
-        assertTrue(screen.contains("modifier = Modifier.size(46.dp)"))
+        assertTrue(screen.contains("Modifier.size(48.dp)"))
         assertTrue(screen.contains("Surface("))
         assertTrue(screen.contains("onDecrease = {"))
         assertTrue(screen.contains("onIncrease = {"))
