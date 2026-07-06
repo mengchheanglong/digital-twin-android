@@ -294,8 +294,6 @@ fun LauncherScreen(
                             onOpenAppsPage = ::openAppsPage,
                             onOpenGoogleSearch = onOpenGoogleSearch,
                             onLaunchApp = onLaunchApp,
-                            onOpenCompanionDestination = onOpenCompanionDestination,
-                            onOpenSettings = onOpenSettings,
                         )
 
                         APPS_PAGE_INDEX -> LauncherAppsPage(
@@ -319,8 +317,6 @@ private fun LauncherHomePage(
     onOpenAppsPage: () -> Unit,
     onOpenGoogleSearch: () -> Unit,
     onLaunchApp: (LauncherApp) -> Unit,
-    onOpenCompanionDestination: (CompanionLaunchRequest) -> Unit,
-    onOpenSettings: () -> Unit,
 ) {
     val clock = rememberLauncherClockLabels()
 
@@ -344,34 +340,6 @@ private fun LauncherHomePage(
             onOpenAppsPage = onOpenAppsPage,
             modifier = Modifier.weight(1f),
         )
-        LauncherHomeFooter(
-            onOpenAppsPage = onOpenAppsPage,
-            onOpenCompanion = {
-                onOpenCompanionDestination(
-                    CompanionLaunchRequest(destination = CompanionDestination.Today),
-                )
-            },
-            onOpenSettings = onOpenSettings,
-        )
-    }
-}
-
-@Composable
-private fun LauncherHomeFooter(
-    onOpenAppsPage: () -> Unit,
-    onOpenCompanion: () -> Unit,
-    onOpenSettings: () -> Unit,
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .heightIn(min = 44.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        LauncherTextAction(text = "Apps", onClick = onOpenAppsPage)
-        LauncherTextAction(text = "Companion", onClick = onOpenCompanion)
-        LauncherTextAction(text = "Settings", onClick = onOpenSettings)
     }
 }
 
